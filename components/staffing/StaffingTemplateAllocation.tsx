@@ -444,7 +444,7 @@ export default function StaffingTemplateAllocation() {
                 </div>
                 <div className="px-1 py-1 bg-white flex items-center min-h-[18px]">
                   <div className="text-[10px] leading-[1.2] flex justify-between w-full">
-                    <span>{unitCoordinators[0]?.roleName || ''}</span>
+                    <span>{unitCoordinators[0]?.roleTitle || ''}</span>
                     <span className="ml-1 font-semibold">{unitCoordinators[0] ? '1' : ''}</span>
                   </div>
                 </div>
@@ -457,7 +457,7 @@ export default function StaffingTemplateAllocation() {
                 </div>
                 <div className="px-1 py-1 bg-white flex items-center min-h-[18px]">
                   <div className="text-[10px] leading-[1.2] flex justify-between w-full">
-                    <span>{unitCoordinators[1]?.roleName || ''}</span>
+                    <span>{unitCoordinators[1]?.roleTitle || ''}</span>
                     <span className="ml-1 font-semibold">{unitCoordinators[1] ? '1' : ''}</span>
                   </div>
                 </div>
@@ -488,7 +488,7 @@ export default function StaffingTemplateAllocation() {
                 </div>
                 <div className="px-1 py-1 bg-white flex items-center min-h-[18px]">
                   <div className="text-[10px] leading-[1.2] flex justify-between w-full">
-                    <span>{unitCoordinators[2]?.roleName || ''}</span>
+                    <span>{unitCoordinators[2]?.roleTitle || ''}</span>
                     <span className="ml-1 font-semibold">{unitCoordinators[2] ? '1' : ''}</span>
                   </div>
                 </div>
@@ -511,7 +511,7 @@ export default function StaffingTemplateAllocation() {
                   </div>
                   <div className="px-1 py-1 bg-white flex items-center min-h-[18px]">
                     <div className="text-[10px] leading-[1.2] flex justify-between w-full">
-                      <span>{coord.roleName || 'Coordinator'}</span>
+                      <span>{coord.roleTitle || 'Coordinator'}</span>
                       <span className="ml-1 font-semibold">1</span>
                     </div>
                   </div>

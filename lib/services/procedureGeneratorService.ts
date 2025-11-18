@@ -47,7 +47,7 @@ export async function getWaitingListPatients(): Promise<WaitingListPatient[]> {
 /**
  * Fetches OPCS procedure details by code
  */
-export async function getOPCSProcedure(procedureCode: string) {
+export async function getOPCSProcedure(procedureCode: string): Promise<any> {
   try {
     const opcsQuery = query(
       collection(db, 'opcs4'),
@@ -61,7 +61,7 @@ export async function getOPCSProcedure(procedureCode: string) {
       return {
         id: doc.id,
         ...doc.data()
-      };
+      } as any;
     }
 
     return null;
@@ -97,7 +97,7 @@ export async function getSurgeonById(surgeonId: string): Promise<Surgeon | null>
 /**
  * Fetches preference card for a procedure code
  */
-export async function getPreferenceCardForProcedure(procedureCode: string) {
+export async function getPreferenceCardForProcedure(procedureCode: string): Promise<any> {
   try {
     const prefsQuery = query(
       collection(db, 'preferenceCards'),
@@ -111,7 +111,7 @@ export async function getPreferenceCardForProcedure(procedureCode: string) {
       return {
         id: doc.id,
         ...doc.data()
-      };
+      } as any;
     }
 
     return null;

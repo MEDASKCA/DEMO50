@@ -53,6 +53,10 @@ export interface StaffPoolSection {
   hospitalId: string;
   label: string;              // "MANAGEMENT DAY", "FLOATERS", etc.
   order: number;              // Display order
+  roles?: Array<{             // Optional roles for this section
+    roleName: string;
+    quantity: number;
+  }>;
 }
 
 // Firestore collections
@@ -212,12 +216,12 @@ export async function generateTheatreSessions(
         }
 
         // Generate sessions based on theatre opening hours and session duration
-        const [startHour, startMin] = theatre.openingHours.start.split(':').map(Number);
-        const [endHour, endMin] = theatre.openingHours.end.split(':').map(Number);
+        const [startHour, startMin] = (theatre.openingHours?.start || '08:00').split(':').map(Number);
+        const [endHour, endMin] = (theatre.openingHours?.end || '17:00').split(':').map(Number);
 
         const startMinutes = startHour * 60 + startMin;
         const endMinutes = endHour * 60 + endMin;
-        const sessionDuration = theatre.sessionDuration;
+        const sessionDuration = theatre.sessionDuration || 240; // Default: 4 hours
 
         let currentSessionStart = startMinutes;
 

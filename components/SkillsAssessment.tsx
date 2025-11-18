@@ -101,7 +101,7 @@ export default function SkillsAssessment({ role, competencies, onUpdate }: Skill
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-teal-600">
-              {Object.keys(roleData).map(sectionKey => calculateSectionProgress(sectionKey, roleData[sectionKey])).reduce((a, b) => a + b, 0) / Object.keys(roleData).length || 0}%
+              {Object.keys(roleData).map(sectionKey => calculateSectionProgress(sectionKey, (roleData as any)[sectionKey])).reduce((a, b) => a + b, 0) / Object.keys(roleData).length || 0}%
             </p>
             <p className="text-xs text-gray-600">Overall Competent+</p>
           </div>
@@ -120,7 +120,7 @@ export default function SkillsAssessment({ role, competencies, onUpdate }: Skill
 
       {/* Sections */}
       {Object.keys(roleData).map(sectionKey => {
-        const section = roleData[sectionKey];
+        const section = (roleData as any)[sectionKey];
         const progress = calculateSectionProgress(sectionKey, section);
         const isExpanded = expandedSections[sectionKey];
 

@@ -361,7 +361,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
       const theatreEntities = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      } as any));
 
       console.log('🎭 Loaded theatres with types:', theatreEntities.map(t => ({
         name: t.name,
@@ -892,13 +892,13 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
           id: `${type}-${index}`,
           name: row['Name'] || row['Staff Name'] || '',
           title: row['Title'] || '',
-          role: type === 'scrub' ? 'Scrub N/P' : 'Anaes N/P',
+          role: (type === 'scrub' ? 'Scrub N/P' : 'Anaes N/P') as 'Scrub N/P' | 'Anaes N/P',
           band: parseBand(row['Band'] || row['Grade'] || ''),
           team: row['Team'] || row['Specialty'] || '',
           shiftStart: parseTime(row['Start Time'] || row['Start'] || ''),
           shiftEnd: parseTime(row['End Time'] || row['End'] || ''),
           allocated: false
-        })).filter(staff => staff.name);
+        } as StaffMember)).filter(staff => staff.name);
 
         if (type === 'scrub') {
           setScrubStaff(parsedStaff);
@@ -1352,13 +1352,13 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
           {/* Extra Controls (Collapsible) */}
           {showExtraControls && (
           <div className="flex flex-wrap gap-2">
-            <label className="px-3 py-1.5 text-white text-xs sm:text-sm font-medium rounded transition-all cursor-pointer flex items-center gap-1" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
+            <label className="px-3 py-1.5 text-white text-xs sm:text-sm font-medium rounded transition-all cursor-pointer flex items-center gap-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
               <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
               Upload Scrub
               <input type="file" accept=".xlsx,.xls" onChange={(e) => handleFileUpload(e, 'scrub')} className="hidden" />
             </label>
 
-            <label className="px-3 py-1.5 text-white text-xs sm:text-sm font-medium rounded transition-all cursor-pointer flex items-center gap-1" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
+            <label className="px-3 py-1.5 text-white text-xs sm:text-sm font-medium rounded transition-all cursor-pointer flex items-center gap-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
               <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
               Upload Anaes
               <input type="file" accept=".xlsx,.xls" onChange={(e) => handleFileUpload(e, 'anaes')} className="hidden" />
@@ -1435,8 +1435,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
 
             <button
               onClick={() => setShowStaffList(!showStaffList)}
-              className="px-3 py-1.5 text-white text-xs sm:text-sm font-medium rounded transition-all flex items-center gap-1"
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              className="px-3 py-1.5 text-white text-xs sm:text-sm font-medium rounded transition-all flex items-center gap-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
             >
               <List className="w-3 h-3 sm:w-4 sm:h-4" />
               Staff List
@@ -1622,7 +1621,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
                                 }
 
                                 // Group requirements by role base name and render with separators
-                                const elements: JSX.Element[] = [];
+                                const elements: React.JSX.Element[] = [];
                                 let lastRoleBase = '';
 
                                 requirements.forEach((req, index) => {
@@ -1666,7 +1665,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
                                   );
                                 }
 
-                                const elements: JSX.Element[] = [];
+                                const elements: React.JSX.Element[] = [];
                                 let lastRole = '';
 
                                 allocation.roles.forEach((roleAlloc, roleIdx) => {
@@ -1838,7 +1837,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
                                 }
 
                                 // Group requirements by role base name and render with separators
-                                const elements: JSX.Element[] = [];
+                                const elements: React.JSX.Element[] = [];
                                 let lastRoleBase = '';
 
                                 requirements.forEach((req, index) => {
@@ -1877,7 +1876,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
                                   );
                                 }
 
-                                const elements: JSX.Element[] = [];
+                                const elements: React.JSX.Element[] = [];
                                 let lastRole = '';
 
                                 allocation.roles.forEach((roleAlloc, roleIdx) => {
@@ -2207,7 +2206,7 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
                 if (!specialty) return null;
 
                 const specialtyAbbr = specialty.abbr || specialty.abbreviation || specialtyId;
-                const items: JSX.Element[] = [];
+                const items: React.JSX.Element[] = [];
 
                 // Add the main specialty option
                 items.push(
@@ -2347,6 +2346,73 @@ export default function AllocationView({ templateMode = false }: AllocationViewP
           </div>
         </div>
       )}
+
+      {/* Staff Requirement Editor Modal */}
+      {staffRequirementModal.visible && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h3 className="text-lg font-semibold">{staffRequirementModal.theatreName}</h3>
+                {staffRequirementModal.specialty && (
+                  <p className="text-sm text-gray-600">Specialty: {staffRequirementModal.specialty}</p>
+                )}
+              </div>
+              <button
+                onClick={handleCloseStaffModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-gray-600">Configure staff requirements for this theatre:</p>
+
+              {staffRequirementModal.requirements.map((req, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {req.roleName}
+                    </label>
+                  </div>
+                  <div className="w-24">
+                    <input
+                      type="number"
+                      min="0"
+                      value={req.quantity}
+                      onChange={(e) => {
+                        const newReqs = [...staffRequirementModal.requirements];
+                        newReqs[index].quantity = parseInt(e.target.value) || 0;
+                        setStaffRequirementModal({
+                          ...staffRequirementModal,
+                          requirements: newReqs
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <button
+                onClick={handleCloseStaffModal}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSaveStaffRequirements(staffRequirementModal.requirements)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2359,9 +2425,10 @@ interface TheatreBlockProps {
   onSpecialtyChange: (value: string) => void;
   onSessionTypeChange: (value: string) => void;
   onRoleRightClick: (roleIndex: number, e: React.MouseEvent) => void;
+  templateMode?: boolean;
 }
 
-function TheatreBlock({ theatre, specialties, sessionTypes, onSpecialtyChange, onSessionTypeChange, onRoleRightClick }: TheatreBlockProps) {
+function TheatreBlock({ theatre, specialties, sessionTypes, onSpecialtyChange, onSessionTypeChange, onRoleRightClick, templateMode = false }: TheatreBlockProps) {
   const isClosed = theatre.sessionType === 'Theatre Closed';
 
   return (
@@ -2507,73 +2574,6 @@ function TheatreBlock({ theatre, specialties, sessionTypes, onSpecialtyChange, o
           }
         `
       }} />
-
-      {/* Staff Requirement Editor Modal */}
-      {staffRequirementModal.visible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div>
-                <h3 className="text-lg font-semibold">{staffRequirementModal.theatreName}</h3>
-                {staffRequirementModal.specialty && (
-                  <p className="text-sm text-gray-600">Specialty: {staffRequirementModal.specialty}</p>
-                )}
-              </div>
-              <button
-                onClick={handleCloseStaffModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              <p className="text-sm text-gray-600">Configure staff requirements for this theatre:</p>
-
-              {staffRequirementModal.requirements.map((req, index) => (
-                <div key={index} className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {req.roleName}
-                    </label>
-                  </div>
-                  <div className="w-24">
-                    <input
-                      type="number"
-                      min="0"
-                      value={req.quantity}
-                      onChange={(e) => {
-                        const newReqs = [...staffRequirementModal.requirements];
-                        newReqs[index].quantity = parseInt(e.target.value) || 0;
-                        setStaffRequirementModal({
-                          ...staffRequirementModal,
-                          requirements: newReqs
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
-              <button
-                onClick={handleCloseStaffModal}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleSaveStaffRequirements(staffRequirementModal.requirements)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

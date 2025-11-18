@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getTheatreListsByDateRange } from '@/lib/services/theatreListService';
-import { TheatreList } from '@/lib/theatreListTypes';
+import { TheatreList, SessionType } from '@/lib/theatreListTypes';
 import { collection, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -56,7 +56,7 @@ export default function SessionsContent() {
   } | null>(null);
   const [allocationSpecialty, setAllocationSpecialty] = useState('');
   const [allocationConsultant, setAllocationConsultant] = useState('');
-  const [allocationSessionType, setAllocationSessionType] = useState<string>('AM');
+  const [allocationSessionType, setAllocationSessionType] = useState<SessionType>('AM');
   const [allocationStatus, setAllocationStatus] = useState<'draft' | 'published' | 'in-progress' | 'completed' | 'cancelled'>('draft');
   const [savingAllocation, setSavingAllocation] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -459,8 +459,8 @@ export default function SessionsContent() {
     return [];
   };
 
-  const getUnits = (): Array<{ name: string; theatreCount: number }> => {
-    return configUnits.map(u => ({ name: u.name, theatreCount: u.theatreCount })).sort((a, b) => a.name.localeCompare(b.name));
+  const getUnits = (): Array<{ name: string; abbreviation: string; theatreCount: number }> => {
+    return configUnits.map(u => ({ name: u.name, abbreviation: u.abbreviation, theatreCount: u.theatreCount })).sort((a, b) => a.name.localeCompare(b.name));
   };
 
   const getSurgeons = (): string[] => {
@@ -496,7 +496,7 @@ export default function SessionsContent() {
     // Match lists by individual theatreId
     // Each theatre gets its own list based on priority mappings
     return lists.filter(list => list.theatreId === theatreId && list.date === dateStr).sort((a, b) => {
-      const order = { FULL: 0, AM: 1, PM: 2, EVE: 3, EXTENDED: 4 };
+      const order = { FULL: 0, AM: 1, PM: 2, PME: 3, EVE: 4, EXTENDED: 5, NIGHT: 6 };
       return order[a.sessionType] - order[b.sessionType];
     });
   };
@@ -866,7 +866,7 @@ export default function SessionsContent() {
                                                   </div>
                                                 </div>
                                                 <div className="text-[9px] md:text-[10px] leading-tight">
-                                                  <div>{session.displayTimes.start}-{session.displayTimes.end} ({session.abbreviation || session.type})</div>
+                                                  <div>{session.displayTimes.start}-{session.displayTimes.end} ({session.displaySessionType})</div>
                                                   <div>{list.primarySurgeonInitials}/{list.primaryAnaesthetistInitials}</div>
                                                   {revenueDisplay && (
                                                     <div className="text-[8px] md:text-[9px] font-bold text-green-700 mt-0.5">
@@ -1177,7 +1177,7 @@ export default function SessionsContent() {
                     </label>
                     <select
                       value={allocationSessionType}
-                      onChange={(e) => setAllocationSessionType(e.target.value)}
+                      onChange={(e) => setAllocationSessionType(e.target.value as SessionType)}
                       disabled={savingAllocation}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     >

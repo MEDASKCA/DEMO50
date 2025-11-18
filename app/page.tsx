@@ -369,7 +369,28 @@ export default function Home() {
             <div className="relative p-8 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-2xl overflow-hidden">
               {/* Animated background pattern */}
               <div className="absolute inset-0 opacity-10">
-                {[...Array(20)].map((_, i) => (
+                {[
+                  { left: 10, top: 20, duration: 2.5, delay: 0 },
+                  { left: 25, top: 60, duration: 3.2, delay: 0.3 },
+                  { left: 40, top: 15, duration: 2.8, delay: 0.6 },
+                  { left: 55, top: 75, duration: 3.5, delay: 0.9 },
+                  { left: 70, top: 35, duration: 2.2, delay: 1.2 },
+                  { left: 85, top: 50, duration: 3.8, delay: 1.5 },
+                  { left: 15, top: 80, duration: 2.7, delay: 0.2 },
+                  { left: 30, top: 40, duration: 3.1, delay: 0.5 },
+                  { left: 45, top: 90, duration: 2.9, delay: 0.8 },
+                  { left: 60, top: 25, duration: 3.3, delay: 1.1 },
+                  { left: 75, top: 65, duration: 2.4, delay: 1.4 },
+                  { left: 90, top: 10, duration: 3.6, delay: 1.7 },
+                  { left: 20, top: 45, duration: 2.6, delay: 0.4 },
+                  { left: 35, top: 85, duration: 3.4, delay: 0.7 },
+                  { left: 50, top: 30, duration: 2.3, delay: 1.0 },
+                  { left: 65, top: 70, duration: 3.7, delay: 1.3 },
+                  { left: 80, top: 55, duration: 2.1, delay: 1.6 },
+                  { left: 5, top: 5, duration: 3.0, delay: 0.1 },
+                  { left: 95, top: 95, duration: 2.8, delay: 1.8 },
+                  { left: 50, top: 50, duration: 3.2, delay: 1.9 }
+                ].map((particle, i) => (
                   <motion.div
                     key={i}
                     className="absolute w-2 h-2 bg-white rounded-full"
@@ -378,13 +399,13 @@ export default function Home() {
                       opacity: [0.3, 1, 0.3],
                     }}
                     transition={{
-                      duration: 2 + Math.random() * 2,
+                      duration: particle.duration,
                       repeat: Infinity,
-                      delay: Math.random() * 2,
+                      delay: particle.delay,
                     }}
                     style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
+                      left: `${particle.left}%`,
+                      top: `${particle.top}%`,
                     }}
                   />
                 ))}

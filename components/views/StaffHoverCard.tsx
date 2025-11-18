@@ -341,7 +341,7 @@ export default function StaffHoverCard({ staff, visible, position }: StaffHoverC
             </h4>
             <div className="space-y-2">
               {isScrubRole ? (
-                staffDetails.competencies.map((comp, idx) => (
+                (staffDetails.competencies || []).map((comp, idx) => (
                   <div
                     key={idx}
                     className={`flex items-center justify-between px-3 py-2 rounded-lg border ${getCompetencyColor(comp.level)}`}

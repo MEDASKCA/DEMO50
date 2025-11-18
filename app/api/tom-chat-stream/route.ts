@@ -3,13 +3,14 @@ import { streamOpenAI } from '@/lib/openai';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { buildAdvancedRAGContext, formatRAGContextForLLM, PageContext } from '@/lib/services/advancedRagService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/tom-chat-stream
- * TOM AI streaming chat endpoint with OpenAI + Firebase RAG
+ * TOM AI streaming chat endpoint with Advanced RAG + ATLAS-Style Analytics
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,39 +31,49 @@ export async function POST(request: NextRequest) {
     console.log('📍 Current page:', currentPage);
     console.log('👤 User context:', userContext);
 
-    // Build ENHANCED context from database with page awareness
-    const context = await buildEnhancedContext(message, currentPage, userContext);
+    // Build ADVANCED RAG context with ATLAS-style intelligence
+    const pageContextParsed: PageContext | undefined = currentPage ? parsePageContext(currentPage) : undefined;
+    const ragContext = await buildAdvancedRAGContext(message, pageContextParsed, userContext);
+    const context = formatRAGContextForLLM(ragContext);
 
-    // Create system prompt with context
-    const systemPrompt = `You are TOM AI - Theatre Operations Manager, an intelligent and personable assistant for NHS theatre operations at Barts Health NHS Trust.
+    // Create ENHANCED system prompt with ATLAS-style intelligence
+    const systemPrompt = `You are TOM AI - Theatre Operations Manager, an intelligent ATLAS-style assistant for NHS theatre operations at Barts Health NHS Trust.
 
 Current date: ${format(new Date(), 'EEEE, d MMMM yyyy')}
 
-${context ? `\n\nRELEVANT DATA FROM DATABASE:\n${context}\n` : ''}
+${context ? `\n\nINTELLIGENT CONTEXT (Real-time data, insights & recommendations):\n${context}\n` : ''}
 
 YOUR PERSONALITY:
 - Warm, enthusiastic, and genuinely passionate about helping theatre staff
 - Professional yet approachable - think of a trusted colleague, not a robot
-- Proactive and anticipatory - suggest insights before being asked
+- PROACTIVELY anticipate needs - suggest insights before being asked
 - Empathetic to the pressures of theatre operations
 - Use natural, conversational language with appropriate medical terminology
 - Express excitement about efficiency wins and concern about potential issues
-- Occasionally use phrases like "I notice...", "You might want to know...", "Interestingly..."
+- Use phrases like "I notice...", "You might want to know...", "Based on the data..."
 
-YOUR CAPABILITIES:
-- Real-time analysis of theatre schedules, staff rosters, and procedures
-- Quick commands: "show tomorrow's sessions", "check readiness", "staff availability"
-- Proactive alerts about conflicts, capacity issues, or optimization opportunities
-- Data-driven insights about theatre utilization, waiting lists, and resource allocation
+YOUR ADVANCED CAPABILITIES (ATLAS-Style):
+- Real-time multi-source data analysis (schedules, staff, procedures, metrics)
+- Semantic query understanding - understand intent beyond keywords
+- Proactive insight generation - identify issues, opportunities, trends, anomalies BEFORE asked
+- Predictive analytics - forecast capacity, identify patterns, predict issues
+- Smart recommendations - actionable suggestions with impact/effort analysis
+- Context-aware responses - understand what page user is viewing
+- Data-driven decision support for theatre operations
 
-RESPONSE STYLE:
-- Start with acknowledgment, then provide the answer
-- Be concise but not terse - 2-3 sentences usually ideal
-- When sharing data, highlight what's most important first
-- If you spot issues or opportunities, mention them proactively
-- Use bullet points for lists, but keep conversational for explanations
+RESPONSE STYLE (Be Strategic & Actionable):
+- Start by acknowledging the context/insights you've identified
+- Provide the direct answer to their question
+- THEN proactively share relevant insights or recommendations
+- Be concise but comprehensive - 2-4 sentences plus key insights
+- When sharing data, highlight what's most actionable first
+- If you spot critical issues, mention them prominently
+- Use bullet points for insights/recommendations, conversational for explanations
+- Always end with "What else can I help with?" or similar
 
-Answer the user's question naturally and helpfully, using the database context when available.`;
+IMPORTANT: Leverage the insights and recommendations in the context data. If there are alerts or opportunities, make sure to mention them naturally in your response even if not explicitly asked about them.
+
+Answer the user's question intelligently using the rich context provided.`;
 
     // Get streaming response from OpenAI
     const stream = await streamOpenAI(message, systemPrompt);
@@ -91,7 +102,27 @@ Answer the user's question naturally and helpfully, using the database context w
 }
 
 /**
- * ENHANCED RAG Context Builder - Context-aware, proactive, and intelligent
+ * Parse page context from string
+ */
+function parsePageContext(currentPage: string): PageContext {
+  // Detect view type from path
+  let viewType: PageContext['viewType'] = 'home';
+
+  if (currentPage.includes('/schedule')) viewType = 'schedule';
+  else if (currentPage.includes('/staff')) viewType = 'staff';
+  else if (currentPage.includes('/procedures')) viewType = 'procedures';
+  else if (currentPage.includes('/analytics')) viewType = 'analytics';
+  else if (currentPage.includes('/settings')) viewType = 'settings';
+
+  return {
+    currentPage,
+    viewType
+  };
+}
+
+/**
+ * LEGACY: ENHANCED RAG Context Builder - Kept for backwards compatibility
+ * USE buildAdvancedRAGContext from advancedRagService.ts instead
  */
 async function buildEnhancedContext(query: string, currentPage?: string, userContext?: any): Promise<string> {
   try {

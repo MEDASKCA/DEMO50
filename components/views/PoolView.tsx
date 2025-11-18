@@ -6,7 +6,7 @@ import {
   getPoolSpecialties,
   getPoolSurgeons,
   getPoolStatistics,
-  TheatreListTemplate,
+  ProcedurePoolItem,
   SchedulePoolFilters
 } from '@/lib/firebase/services/schedulePoolService';
 import {
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function PoolView() {
-  const [poolData, setPoolData] = useState<TheatreListTemplate[]>([]);
+  const [poolData, setPoolData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statistics, setStatistics] = useState<any>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -505,7 +505,7 @@ export default function PoolView() {
                             <div className="space-y-3">
                               <h4 className="font-semibold text-gray-900">Procedures ({list.procedures?.length || 0})</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {(list.procedures || []).map((proc, idx) => (
+                                {(list.procedures || []).map((proc: any, idx: number) => (
                                   <div
                                     key={idx}
                                     className="flex items-start gap-2 p-2 bg-white rounded border border-gray-200"

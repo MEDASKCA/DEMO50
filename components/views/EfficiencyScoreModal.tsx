@@ -14,7 +14,6 @@ import {
   Activity
 } from 'lucide-react';
 import { getEfficiencyForDate } from '@/lib/firebase/services/theatreService';
-import { TheatreEfficiency } from '@/types/tom';
 
 interface EfficiencyScoreModalProps {
   isOpen: boolean;
@@ -25,7 +24,7 @@ type FilterUnit = 'all' | 'main' | 'acad' | 'recovery';
 
 export default function EfficiencyScoreModal({ isOpen, onClose }: EfficiencyScoreModalProps) {
   const [selectedUnit, setSelectedUnit] = useState<FilterUnit>('all');
-  const [efficiencyData, setEfficiencyData] = useState<TheatreEfficiency[]>([]);
+  const [efficiencyData, setEfficiencyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -302,7 +301,7 @@ export default function EfficiencyScoreModal({ isOpen, onClose }: EfficiencyScor
                 <div className="border-t border-gray-200 pt-3">
                   <p className="text-xs font-semibold text-gray-700 mb-2">Performance Factors</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {theatre.factors.map((f, idx) => (
+                    {theatre.factors.map((f: any, idx: number) => (
                       <div
                         key={idx}
                         className={`flex items-center justify-between px-3 py-2 rounded border text-xs ${getFactorColor(f.status)}`}

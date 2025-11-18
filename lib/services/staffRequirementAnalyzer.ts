@@ -270,7 +270,7 @@ export async function analyzeProcedure(
     opcsCode,
     procedureName,
     specialty,
-    opcsProcedure
+    opcsProcedure || undefined
   );
 
   // Estimate duration
@@ -279,7 +279,7 @@ export async function analyzeProcedure(
     procedureName,
     complexity,
     specialty,
-    opcsProcedure
+    opcsProcedure || undefined
   );
 
   // Determine anaesthetic type
@@ -287,7 +287,7 @@ export async function analyzeProcedure(
     procedureName,
     complexity,
     specialty,
-    opcsProcedure
+    opcsProcedure || undefined
   );
 
   // Calculate staff requirements

@@ -3,7 +3,7 @@
 
 export type AnaestheticType = 'GA' | 'Spinal' | 'Regional' | 'Sedation' | 'Local' | 'Combined';
 
-export type SessionType = 'AM' | 'PM' | 'EVE' | 'FULL' | 'EXTENDED';
+export type SessionType = 'AM' | 'PM' | 'EVE' | 'FULL' | 'PME' | 'EXTENDED' | 'NIGHT';
 
 export interface SurgicalCase {
   id: string;
@@ -139,9 +139,11 @@ export const TURNOVER_TIMES = {
 export const SESSION_CONFIGS = {
   AM: { start: '08:00', end: '13:00', duration: 300 },
   PM: { start: '13:00', end: '18:00', duration: 300 },
+  PME: { start: '13:00', end: '20:00', duration: 420 }, // PM Extended
   EVE: { start: '18:00', end: '20:00', duration: 120 },
   FULL: { start: '08:00', end: '18:00', duration: 600 }, // Full day
-  EXTENDED: { start: '08:00', end: '20:00', duration: 720 } // Extended day
+  EXTENDED: { start: '08:00', end: '20:00', duration: 720 }, // Extended day
+  NIGHT: { start: '20:00', end: '08:00', duration: 720 } // Night shift
 };
 
 // Helper function to determine turnover time based on complexity

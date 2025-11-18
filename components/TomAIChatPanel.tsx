@@ -747,7 +747,7 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
                   isListening={voiceUiMode === 'listening'}
                   isSpeaking={voiceUiMode === 'speaking'}
                   size={280}
-                  variant="standalone"
+                  variant="fixed"
                 />
             </div>
 
@@ -763,7 +763,7 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
                   isListening={voiceUiMode === 'listening'}
                   isSpeaking={voiceUiMode === 'speaking'}
                   size={280}
-                  variant="standalone"
+                  variant="fixed"
                 />
             </div>
 
@@ -789,7 +789,7 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
                   isListening={voiceUiMode === 'listening'}
                   isSpeaking={voiceUiMode === 'speaking'}
                   size={280}
-                  variant="standalone"
+                  variant="fixed"
                 />
             </div>
 

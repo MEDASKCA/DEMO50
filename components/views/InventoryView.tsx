@@ -1640,12 +1640,12 @@ export default function InventoryView({ onBack, isAdmin = false, fixedTab, costU
                             <div className="pt-1.5 border-t border-gray-100">
                               <div className="flex justify-between text-[10px]">
                                 <span className="text-gray-500">Unit Cost:</span>
-                                <span className="text-gray-900 font-bold">{formatCurrency(item.cost.unit)}</span>
+                                <span className="text-gray-900 font-bold">{formatCurrency(typeof item.cost === 'number' ? item.cost : ((item.cost as any)?.unit || 0))}</span>
                               </div>
                               <div className="flex justify-between text-[10px] mt-0.5">
                                 <span className="text-gray-500">Total Value:</span>
                                 <span className="text-blue-600 font-bold">
-                                  {formatCurrency(item.cost.unit * item.stock.current)}
+                                  {formatCurrency((typeof item.cost === 'number' ? item.cost : ((item.cost as any)?.unit || 0)) * item.stock.current)}
                                 </span>
                               </div>
                             </div>

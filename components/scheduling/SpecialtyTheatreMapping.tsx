@@ -24,7 +24,7 @@ interface Specialty {
 interface Theatre {
   id: string;
   name: string;
-  unitId: string;
+  unitId?: string;
   unitName?: string;
 }
 
@@ -740,7 +740,7 @@ function ConfigurationModal({
       id: configuration?.id || `theatre-${selectedTheatreId}`,
       theatreId: selectedTheatreId,
       theatreName: selectedTheatre.name,
-      unitId: selectedTheatre.unitId,
+      unitId: selectedTheatre.unitId || '',
       unitName: selectedTheatre.unitName || '',
       hospitalId: '', // Will be set by parent
       specialtyAssignments

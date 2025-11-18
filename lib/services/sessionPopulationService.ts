@@ -331,7 +331,7 @@ export async function getSessionUtilizationSummary(
 
     proceduresSnap.forEach(doc => {
       const data = doc.data() as GeneratedProcedure;
-      if (data.scheduledSessionId && data.scheduledDate >= startDate && data.scheduledDate <= endDate) {
+      if (data.scheduledSessionId && data.scheduledDate && data.scheduledDate >= startDate && data.scheduledDate <= endDate) {
         scheduledProcedures.push({ id: doc.id, ...data });
       }
     });

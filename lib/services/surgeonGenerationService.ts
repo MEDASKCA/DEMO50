@@ -218,7 +218,7 @@ export async function calculateSpecialtyCoverage(): Promise<SpecialtyCoverage[]>
       // Has subspecialties
       specialty.subspecialties.forEach(subspe => {
         const existingCount = existingSurgeons.filter(s =>
-          s.specialtyId === specialty.id && s.subspecialtyName === subspe.name
+          s.specialtyId === specialty.id && s.primarySubspecialty === subspe.name
         ).length;
 
         const requiredCount = calculateRequiredSurgeons(specialty.name, subspe.name);
@@ -235,7 +235,7 @@ export async function calculateSpecialtyCoverage(): Promise<SpecialtyCoverage[]>
     } else {
       // No subspecialties
       const existingCount = existingSurgeons.filter(s =>
-        s.specialtyId === specialty.id && !s.subspecialtyName
+        s.specialtyId === specialty.id && !s.primarySubspecialty
       ).length;
 
       const requiredCount = calculateRequiredSurgeons(specialty.name);
@@ -368,6 +368,7 @@ export async function generateMissingAnaesthetists(): Promise<number> {
       title: 'Dr',
       initials,
       specialty: 'Anaesthetics',
+      grade: 'Consultant', // Default grade
       ...employment,
       maxListsPerWeek: employment.fte === 1.0 ? 5 : 3, // Full-time = 5, part-time = 3
       createdAt: new Date().toISOString(),

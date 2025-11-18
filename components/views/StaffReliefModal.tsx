@@ -21,6 +21,7 @@ import {
 interface StaffReliefModalProps {
   isOpen: boolean;
   onClose: () => void;
+  staffMember?: any;
 }
 
 interface ReliefRequest {

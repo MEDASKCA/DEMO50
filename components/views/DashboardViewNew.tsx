@@ -166,7 +166,7 @@ const generateDemoOperationalData = (theatreId: string, index: number, isEmergen
     mealStatus: mealStatuses[seed % mealStatuses.length],
     mealBreaks: {
       teaBreak: {
-        status: seed % 3 === 0 ? 'taken' : seed % 3 === 1 ? 'overdue' : 'pending',
+        status: (seed % 3 === 0 ? 'taken' : seed % 3 === 1 ? 'overdue' : 'pending') as 'taken' | 'overdue' | 'pending',
         time: seed % 3 === 0 ? '10:15' : undefined
       },
       lunchBreak: {

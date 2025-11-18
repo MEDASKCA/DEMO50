@@ -1660,23 +1660,6 @@ export const PROCEDURE_COSTS: Record<string, ProcedureCost> = {
   },
 
   // Urology
-  'M651': {
-    opcs4: 'M651',
-    procedureName: 'TURP (Transurethral Resection of Prostate)',
-    specialty: 'Urology',
-    subcategory: 'Endourology',
-    theatreCost: 980,
-    staffCost: 740,
-    implantCost: 0,
-    consumablesCost: 320,
-    dayCase: 0,
-    inpatientElective: 3680,
-    avgTheatreTime: 70,
-    avgLengthOfStay: 2,
-    hrgCode: 'LB26A',
-    tariff: 3680,
-    lastUpdated: '2024-04'
-  },
   'M613': {
     opcs4: 'M613',
     procedureName: 'Radical Prostatectomy (Laparoscopic)',
@@ -1747,23 +1730,6 @@ export const PROCEDURE_COSTS: Record<string, ProcedureCost> = {
     avgLengthOfStay: 2,
     hrgCode: 'MA10A',
     tariff: 4920,
-    lastUpdated: '2024-04'
-  },
-  'R171': {
-    opcs4: 'R171',
-    procedureName: 'Caesarean Section (Elective)',
-    specialty: 'Gynaecology',
-    subcategory: 'Obstetrics',
-    theatreCost: 980,
-    staffCost: 840,
-    implantCost: 0,
-    consumablesCost: 280,
-    dayCase: 0,
-    inpatientElective: 3420,
-    avgTheatreTime: 50,
-    avgLengthOfStay: 3,
-    hrgCode: 'NZ30A',
-    tariff: 3420,
     lastUpdated: '2024-04'
   },
 
@@ -2869,7 +2835,6 @@ export const PROCEDURE_COSTS: Record<string, ProcedureCost> = {
   'G321': { opcs4: 'G321', procedureName: 'Gastric Ulcer Repair', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 630, staffCost: 440, implantCost: 0, consumablesCost: 190, inpatientElective: 1860, avgTheatreTime: 79, avgLengthOfStay: 1, hrgCode: 'FZ95B', tariff: 1860, lastUpdated: '2025-01' },
   'G351': { opcs4: 'G351', procedureName: 'Gastrojejunostomy', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 110, staffCost: 80, implantCost: 0, consumablesCost: 30, dayCase: 220, avgTheatreTime: 21, avgLengthOfStay: 0, hrgCode: 'FZ35Z', tariff: 220, lastUpdated: '2025-01' },
   'G141': { opcs4: 'G141', procedureName: 'Oesophageal Dilatation', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 270, staffCost: 190, implantCost: 0, consumablesCost: 80, dayCase: 540, avgTheatreTime: 54, avgLengthOfStay: 0, hrgCode: 'FZ25Z', tariff: 540, lastUpdated: '2025-01' },
-  'G281': { opcs4: 'G281', procedureName: 'Anti-reflux Surgery', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 290, staffCost: 200, implantCost: 0, consumablesCost: 90, dayCase: 580, avgTheatreTime: 58, avgLengthOfStay: 0, hrgCode: 'FZ56Z', tariff: 580, lastUpdated: '2025-01' },
   'G342': { opcs4: 'G342', procedureName: 'Revision Gastric Bypass', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 2220, staffCost: 1550, implantCost: 0, consumablesCost: 670, inpatientElective: 6240, avgTheatreTime: 185, avgLengthOfStay: 3, hrgCode: 'FZ63A', tariff: 6240, lastUpdated: '2025-01' },
   'G284': { opcs4: 'G284', procedureName: 'Gastric Band Removal', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 270, staffCost: 190, implantCost: 0, consumablesCost: 80, dayCase: 540, avgTheatreTime: 53, avgLengthOfStay: 0, hrgCode: 'FZ51Z', tariff: 540, lastUpdated: '2025-01' },
   'G343': { opcs4: 'G343', procedureName: 'Duodenal Switch', specialty: 'General Surgery', subcategory: 'Upper Gastrointestinal', theatreCost: 180, staffCost: 130, implantCost: 0, consumablesCost: 50, dayCase: 360, avgTheatreTime: 35, avgLengthOfStay: 0, hrgCode: 'FZ56Z', tariff: 360, lastUpdated: '2025-01' },
@@ -3234,7 +3199,6 @@ export const PROCEDURE_COSTS: Record<string, ProcedureCost> = {
   // Orthopaedic Trauma
   'W242': { opcs4: 'W242', procedureName: 'Intramedullary Nail Femur', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 220, staffCost: 150, implantCost: 0, consumablesCost: 70, dayCase: 440, avgTheatreTime: 43, avgLengthOfStay: 0, hrgCode: 'HN13Z', tariff: 440, lastUpdated: '2025-01' },
   'W243': { opcs4: 'W243', procedureName: 'Intramedullary Nail Tibia', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 220, staffCost: 150, implantCost: 0, consumablesCost: 70, dayCase: 440, avgTheatreTime: 44, avgLengthOfStay: 0, hrgCode: 'HN62Z', tariff: 440, lastUpdated: '2025-01' },
-  'W461': { opcs4: 'W461', procedureName: 'Hemiarthroplasty Hip', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 200, staffCost: 140, implantCost: 0, consumablesCost: 60, dayCase: 400, avgTheatreTime: 39, avgLengthOfStay: 0, hrgCode: 'HN12Z', tariff: 400, lastUpdated: '2025-01' },
   'W251': { opcs4: 'W251', procedureName: 'Pelvic Fracture Fixation', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 540, staffCost: 380, implantCost: 1260, consumablesCost: 160, inpatientElective: 2940, avgTheatreTime: 67, avgLengthOfStay: 1, hrgCode: 'HN42B', tariff: 2940, lastUpdated: '2025-01' },
   'W252': { opcs4: 'W252', procedureName: 'Acetabular Fracture Fixation', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 640, staffCost: 450, implantCost: 550, consumablesCost: 190, inpatientElective: 2430, avgTheatreTime: 80, avgLengthOfStay: 1, hrgCode: 'HN24B', tariff: 2430, lastUpdated: '2025-01' },
   'W253': { opcs4: 'W253', procedureName: 'Tibial Plateau Fracture Fixation', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 790, staffCost: 550, implantCost: 1050, consumablesCost: 240, inpatientElective: 3230, avgTheatreTime: 99, avgLengthOfStay: 1, hrgCode: 'HN59B', tariff: 3230, lastUpdated: '2025-01' },
@@ -3252,7 +3216,6 @@ export const PROCEDURE_COSTS: Record<string, ProcedureCost> = {
   'W261': { opcs4: 'W261', procedureName: 'Subtrochanteric Fracture Fixation', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 790, staffCost: 550, implantCost: 1260, consumablesCost: 240, inpatientElective: 4040, avgTheatreTime: 99, avgLengthOfStay: 2, hrgCode: 'HN62B', tariff: 4040, lastUpdated: '2025-01' },
   'W262': { opcs4: 'W262', procedureName: 'Supracondylar Fracture Fixation', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 620, staffCost: 430, implantCost: 560, consumablesCost: 190, inpatientElective: 3000, avgTheatreTime: 77, avgLengthOfStay: 2, hrgCode: 'HN33B', tariff: 3000, lastUpdated: '2025-01' },
   'W341': { opcs4: 'W341', procedureName: 'Malunion Correction', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 260, staffCost: 180, implantCost: 0, consumablesCost: 80, dayCase: 520, avgTheatreTime: 52, avgLengthOfStay: 0, hrgCode: 'HN45Z', tariff: 520, lastUpdated: '2025-01' },
-  'W901': { opcs4: 'W901', procedureName: 'Removal of Metalwork', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 160, staffCost: 110, implantCost: 0, consumablesCost: 50, dayCase: 320, avgTheatreTime: 32, avgLengthOfStay: 0, hrgCode: 'HN81Z', tariff: 320, lastUpdated: '2025-01' },
   'W361': { opcs4: 'W361', procedureName: 'Limb Lengthening', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 280, staffCost: 200, implantCost: 0, consumablesCost: 80, dayCase: 560, avgTheatreTime: 55, avgLengthOfStay: 0, hrgCode: 'HN25Z', tariff: 560, lastUpdated: '2025-01' },
   'T862': { opcs4: 'T862', procedureName: 'Compartment Syndrome Release', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 290, staffCost: 200, implantCost: 0, consumablesCost: 90, dayCase: 580, avgTheatreTime: 57, avgLengthOfStay: 0, hrgCode: 'HN96Z', tariff: 580, lastUpdated: '2025-01' },
   'X081': { opcs4: 'X081', procedureName: 'Amputation', specialty: 'Orthopaedics', subcategory: 'Orthopaedic Trauma', theatreCost: 300, staffCost: 210, implantCost: 0, consumablesCost: 90, dayCase: 600, avgTheatreTime: 59, avgLengthOfStay: 0, hrgCode: 'HN96Z', tariff: 600, lastUpdated: '2025-01' },

@@ -1016,15 +1016,15 @@ export default function AdvancedTemplateBuilder() {
             style: {
               backgroundColor: '#ffffff',
               textColor: '#111827',
-              fontWeight: 'normal',
-              fontStyle: 'normal',
+              fontWeight: 'normal' as 'normal' | 'bold',
+              fontStyle: 'normal' as 'normal' | 'italic',
               fontSize: 12,
               fontFamily: 'Arial',
-              textAlign: 'center',
+              textAlign: 'center' as 'left' | 'center' | 'right',
               borderColor: '#1f2937',
               borderWidth: 1,
               padding: 8,
-              verticalAlign: 'middle'
+              verticalAlign: 'middle' as 'top' | 'middle' | 'bottom'
             }
           };
         }
@@ -1246,7 +1246,7 @@ export default function AdvancedTemplateBuilder() {
 
             <button
               onClick={splitCell}
-              disabled={!selectedCell || (selectedCell && currentTemplate.cells.find(c => c.id === selectedCell)?.rowSpan === 1 && currentTemplate.cells.find(c => c.id === selectedCell)?.colSpan === 1)}
+              disabled={Boolean(!selectedCell || (selectedCell && currentTemplate.cells.find(c => c.id === selectedCell)?.rowSpan === 1 && currentTemplate.cells.find(c => c.id === selectedCell)?.colSpan === 1))}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-700 rounded-md hover:bg-teal-100 transition-colors text-sm disabled:opacity-50"
               title="Split merged cell"
             >

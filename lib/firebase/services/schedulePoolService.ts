@@ -61,6 +61,9 @@ export interface SchedulePoolFilters {
   minUtilisation?: number; // Now represents min PCS score
   maxUtilisation?: number; // Now represents max PCS score
   year?: number;
+  weekNumber?: number;
+  dayOfWeek?: string;
+  sessionType?: string;
 }
 
 /**

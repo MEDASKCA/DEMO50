@@ -66,7 +66,7 @@ export default function EquipmentView({ onBack, isAdmin = false }: EquipmentView
 
     // Search filter
     if (searchTerm.trim()) {
-      items = searchItems(items, searchTerm);
+      items = searchItems(searchTerm);
     }
 
     // Category filter

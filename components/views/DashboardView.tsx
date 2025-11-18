@@ -846,7 +846,7 @@ export default function DashboardView() {
               </div>
               <div className="p-4 max-h-[300px] overflow-y-auto">
                 {(() => {
-                  const alerts = [];
+                  const alerts: Array<{ type: string; severity: string; theatre: string; message: string; time: string }> = [];
 
                   // Relief required
                   const needsRelief = theatreAllocations
@@ -936,7 +936,7 @@ export default function DashboardView() {
               </div>
               <div className="p-4 max-h-[300px] overflow-y-auto">
                 {(() => {
-                  const upcoming = [];
+                  const upcoming: Array<{ theatre: string; status: string; case: string; time: string; color: string }> = [];
 
                   // Theatres in anaesthetic room (next to start)
                   const inAnaes = theatreAllocations

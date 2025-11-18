@@ -227,7 +227,7 @@ export const mockPosts: Post[] = [
     content: '✅ New hip implant inventory has arrived and been catalogued. Smith & Nephew Anthology system now fully stocked. Please check the supply catalogue for product codes and specifications.',
     timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
     likes: ['user-1', 'user-2', 'user-6', 'user-7'],
-    reactions: { 'user-1': '👍', 'user-2': '👍', 'user-6': '👍', 'user-7': '👍' },
+    reactions: { 'user-1': '👍', 'user-2': '👍', 'user-6': '👍', 'user-7': '👍' } as any,
     comments: [],
     shares: 5,
     type: 'announcement'
@@ -238,7 +238,7 @@ export const mockPosts: Post[] = [
     content: 'Looking for someone to swap my night shift on Thursday 7th Nov. I can cover any day shift Fri 8th - Sun 10th Nov in return. DM if interested!',
     timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
     likes: ['user-3', 'user-6'],
-    reactions: { 'user-3': '👍', 'user-6': '😮' },
+    reactions: { 'user-3': '👍', 'user-6': '😮' } as any,
     comments: [
       {
         id: 'comment-4',
@@ -257,7 +257,7 @@ export const mockPosts: Post[] = [
     content: 'Recovery team handled 14 major cases today without any delays or complications. Exceptional patient care all around. Proud of this team! 🌟',
     timestamp: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), // 1.5 days ago
     likes: ['user-1', 'user-2', 'user-3', 'user-4', 'user-5', 'user-6'],
-    reactions: { 'user-1': '❤️', 'user-2': '❤️', 'user-3': '❤️', 'user-4': '👍', 'user-5': '😮', 'user-6': '❤️' },
+    reactions: { 'user-1': '❤️', 'user-2': '❤️', 'user-3': '❤️', 'user-4': '👍', 'user-5': '😮', 'user-6': '❤️' } as any,
     comments: [
       {
         id: 'comment-5',
@@ -276,7 +276,7 @@ export const mockPosts: Post[] = [
     content: 'Reminder: New WHO surgical safety checklist training session tomorrow at 1pm. Mandatory for all theatre staff. See you there!',
     timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
     likes: ['user-1', 'user-2', 'user-3', 'user-4', 'user-6', 'user-7', 'user-8'],
-    reactions: { 'user-1': '👍', 'user-2': '👍', 'user-3': '👍', 'user-4': '👍', 'user-6': '👍', 'user-7': '👍', 'user-8': '👍' },
+    reactions: { 'user-1': '👍', 'user-2': '👍', 'user-3': '👍', 'user-4': '👍', 'user-6': '👍', 'user-7': '👍', 'user-8': '👍' } as any,
     comments: [],
     shares: 15,
     type: 'announcement'

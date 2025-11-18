@@ -19,13 +19,50 @@ import {
   Stethoscope,
   Filter
 } from 'lucide-react';
-import { type ScheduledCase } from '@/lib/mockData';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot } from 'firebase/firestore';
-import type { Case } from '@/types';
 import { useDataSource } from '@/contexts/DataSourceContext';
 import { getTheatres } from '@/lib/scheduling/theatreService';
 import type { Theatre } from '@/lib/schedulingTypes';
+
+// Define ScheduledCase interface locally
+interface ScheduledCase {
+  id: string;
+  listOrder: number;
+  date: string;
+  theatre: string;
+  scheduledTime: string;
+  time: string;
+  startTime?: string;
+  endTime?: string;
+  procedure: string;
+  procedureName: string;
+  specialty: string;
+  surgeon: string;
+  patient: {
+    mrn: string;
+    age: number;
+    notes: string;
+  };
+  estimatedDuration: number;
+  status: string;
+  team: {
+    surgeon: { name: string; title: string };
+    assistant: { name: string; title: string };
+    anaesthetist: { name: string; title: string };
+    scrubNurse: { name: string; title: string };
+    scrubNP: string;
+  };
+  assistant: string;
+  anaesthetist: string;
+  anaesNP: string;
+  scrubNP: string;
+  hca?: string;
+  equipment: any[];
+  requirements: any[];
+  notes: string[];
+  requests: any[];
+}
 
 // Type alias for compatibility with existing code
 type Procedure = ScheduledCase;
@@ -178,9 +215,11 @@ export default function TheatreScheduleView({ onBack }: TheatreScheduleViewProps
     const unsubscribe = onSnapshot(casesRef, (snapshot) => {
       console.log(`✅ TheatreScheduleView: Loaded ${snapshot.size} cases`);
       const casesData: Procedure[] = [];
-      snapshot.forEach((doc, index) => {
+      let index = 0;
+      snapshot.forEach((doc) => {
         const caseData = doc.data();
         casesData.push(mapCaseToScheduledCase({ id: doc.id, ...caseData }, index));
+        index++;
       });
       // Sort by date and time
       casesData.sort((a, b) => {
@@ -1536,7 +1575,7 @@ export default function TheatreScheduleView({ onBack }: TheatreScheduleViewProps
                     const dayProcs = getProceduresForDay(selectedDate).sort((a, b) => a.listOrder - b.listOrder);
                     const firstProc = dayProcs[0];
                     const lastProc = dayProcs[dayProcs.length - 1];
-                    const sessionCount = firstProc && lastProc ? calculateSessions(firstProc.startTime, lastProc.endTime) : 0;
+                    const sessionCount = firstProc && lastProc ? calculateSessions(firstProc.startTime || '', lastProc.endTime || '') : 0;
                     const startTime = firstProc?.startTime || '';
                     const endTime = lastProc?.endTime || '';
 
@@ -1592,7 +1631,7 @@ export default function TheatreScheduleView({ onBack }: TheatreScheduleViewProps
                                   {proc.listOrder}
                                 </div>
                                 {idx === 0 && (
-                                  <Award className="w-5 h-5 text-yellow-600" title="Gold Patient" />
+                                  <Award className="w-5 h-5 text-yellow-600" />
                                 )}
                               </div>
 
@@ -1608,7 +1647,7 @@ export default function TheatreScheduleView({ onBack }: TheatreScheduleViewProps
                                 <div className="flex items-center space-x-2">
                                   <h3 className="font-semibold text-gray-900">{proc.procedureName}</h3>
                                   {proc.requirements && proc.requirements.length > 0 && (
-                                    <AlertCircle className="w-5 h-5 text-red-600 cursor-pointer" title="Has alerts" />
+                                    <AlertCircle className="w-5 h-5 text-red-600 cursor-pointer" />
                                   )}
                                 </div>
                                 <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">

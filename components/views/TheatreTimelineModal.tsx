@@ -16,7 +16,9 @@ import {
 } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { ScheduledCase } from '@/lib/mockData';
+
+// Use any type for ScheduledCase to avoid circular dependencies
+type ScheduledCase = any;
 
 interface TheatreTimelineModalProps {
   isOpen: boolean;

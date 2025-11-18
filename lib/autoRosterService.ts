@@ -113,7 +113,7 @@ export async function loadStaffLeave(startDate: string, endDate: string): Promis
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    })) as StaffLeave[];
+    })) as unknown as StaffLeave[];
   } catch (error) {
     console.error('Error loading staff leave:', error);
     return [];

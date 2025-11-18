@@ -6,7 +6,7 @@ import {
   getPoolSpecialties,
   getPoolSurgeons,
   getPoolStatistics,
-  TheatreListTemplate,
+  ProcedurePoolItem,
   SchedulePoolFilters
 } from '@/lib/firebase/services/schedulePoolService';
 import {
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export default function ListManagementContent() {
-  const [poolData, setPoolData] = useState<TheatreListTemplate[]>([]);
+  const [poolData, setPoolData] = useState<ProcedurePoolItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statistics, setStatistics] = useState<any>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -36,8 +36,7 @@ export default function ListManagementContent() {
     year: 2025
   });
 
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const sessionTypes = ['AM', 'PM', 'FULL', 'EXTENDED', 'EVE'];
+  const priorities = ['P1', 'P2', 'P3', 'P4', 'P5'];
 
   useEffect(() => {
     loadInitialData();
@@ -84,36 +83,30 @@ export default function ListManagementContent() {
   const exportToCSV = () => {
     const headers = [
       'ID',
-      'Week',
-      'Date',
-      'Day',
-      'Session Type',
-      'Session Time',
+      'Procedure Name',
+      'OPCS4 Codes',
       'Specialty',
       'Subspecialty',
       'Surgeon',
-      'Anaesthetist',
-      'Total PCS',
-      'Max PCS',
-      'Utilisation %',
-      'Procedures Count'
+      'Surgeon Initials',
+      'Priority',
+      'PCS Score',
+      'Year',
+      'Created At'
     ];
 
-    const rows = poolData.map(list => [
-      list.id,
-      list.weekNumber,
-      list.date,
-      list.dayOfWeek,
-      list.sessionType,
-      `${list.sessionStart}-${list.sessionEnd}`,
-      list.specialty,
-      list.subspecialty || '',
-      list.surgeon,
-      list.anaesthetist,
-      list.totalPCS,
-      list.maxPCS,
-      `${Math.round((list.totalPCS / list.maxPCS) * 100)}%`,
-      list.procedures.length
+    const rows = poolData.map(procedure => [
+      procedure.id,
+      procedure.name,
+      procedure.opcs4.join('; '),
+      procedure.specialty,
+      procedure.subspecialty || '',
+      procedure.surgeon,
+      procedure.surgeonInitials,
+      procedure.priority,
+      procedure.pcsScore,
+      procedure.year,
+      procedure.createdAt
     ]);
 
     const csvContent = [
@@ -125,14 +118,14 @@ export default function ListManagementContent() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `schedule-pool-2025-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `procedure-pool-2025-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
-  const getUtilisationColor = (utilisation: number): string => {
-    if (utilisation >= 85) return 'bg-green-100 text-green-800';
-    if (utilisation >= 70) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
+  const getPcsScoreColor = (score: number): string => {
+    if (score >= 15) return 'bg-red-100 text-red-800'; // High complexity
+    if (score >= 10) return 'bg-yellow-100 text-yellow-800'; // Medium complexity
+    return 'bg-green-100 text-green-800'; // Low complexity
   };
 
   const getPriorityColor = (priority: string): string => {
@@ -163,9 +156,9 @@ export default function ListManagementContent() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Schedule Pool 2025</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Procedure Pool 2025</h1>
             <p className="text-gray-600 mt-1">
-              Year-long theatre schedule pool with {statistics?.totalLists.toLocaleString() || 0} lists
+              Year-long procedure pool with {statistics?.totalProcedures.toLocaleString() || 0} procedures
             </p>
           </div>
           <div className="flex gap-2">
@@ -200,30 +193,6 @@ export default function ListManagementContent() {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Lists</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {statistics.totalLists.toLocaleString()}
-                  </p>
-                </div>
-                <Calendar className="h-8 w-8 text-blue-600" />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Avg Utilisation</p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">
-                    {Math.round(statistics.averageUtilisation)}%
-                  </p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex justify-between items-start">
-                <div>
                   <p className="text-sm font-medium text-gray-600">Total Procedures</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
                     {statistics.totalProcedures.toLocaleString()}
@@ -236,12 +205,36 @@ export default function ListManagementContent() {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <div className="flex justify-between items-start">
                 <div>
+                  <p className="text-sm font-medium text-gray-600">Avg PCS Score</p>
+                  <p className="text-2xl font-bold text-green-600 mt-1">
+                    {Math.round(statistics.averageUtilisation)}
+                  </p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex justify-between items-start">
+                <div>
                   <p className="text-sm font-medium text-gray-600">Specialties</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
                     {specialties.length}
                   </p>
                 </div>
                 <User className="h-8 w-8 text-orange-600" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Surgeons</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {surgeons.length}
+                  </p>
+                </div>
+                <Calendar className="h-8 w-8 text-blue-600" />
               </div>
             </div>
           </div>
@@ -257,7 +250,7 @@ export default function ListManagementContent() {
               </h3>
             </div>
             <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {/* Specialty Filter */}
                 <div>
                   <label htmlFor="specialty" className="block text-sm font-medium text-gray-700 mb-1">
@@ -276,55 +269,35 @@ export default function ListManagementContent() {
                   </select>
                 </div>
 
-                {/* Week Number Filter */}
+                {/* Subspecialty Filter */}
                 <div>
-                  <label htmlFor="weekNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                    Week Number
+                  <label htmlFor="subspecialty" className="block text-sm font-medium text-gray-700 mb-1">
+                    Subspecialty
                   </label>
                   <input
-                    id="weekNumber"
-                    type="number"
-                    min="1"
-                    max="52"
-                    placeholder="1-52"
-                    value={filters.weekNumber || ''}
-                    onChange={(e) => setFilters({ ...filters, weekNumber: e.target.value ? parseInt(e.target.value) : undefined })}
+                    id="subspecialty"
+                    type="text"
+                    placeholder="Enter subspecialty"
+                    value={filters.subspecialty || ''}
+                    onChange={(e) => setFilters({ ...filters, subspecialty: e.target.value || undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
-                {/* Day of Week Filter */}
+                {/* Priority Filter */}
                 <div>
-                  <label htmlFor="dayOfWeek" className="block text-sm font-medium text-gray-700 mb-1">
-                    Day of Week
+                  <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
                   </label>
                   <select
-                    id="dayOfWeek"
-                    value={filters.dayOfWeek || ''}
-                    onChange={(e) => setFilters({ ...filters, dayOfWeek: e.target.value || undefined })}
+                    id="priority"
+                    value={filters.priority || ''}
+                    onChange={(e) => setFilters({ ...filters, priority: e.target.value as any || undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">All Days</option>
-                    {daysOfWeek.map(day => (
-                      <option key={day} value={day}>{day}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Session Type Filter */}
-                <div>
-                  <label htmlFor="sessionType" className="block text-sm font-medium text-gray-700 mb-1">
-                    Session Type
-                  </label>
-                  <select
-                    id="sessionType"
-                    value={filters.sessionType || ''}
-                    onChange={(e) => setFilters({ ...filters, sessionType: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">All Sessions</option>
-                    {sessionTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                    <option value="">All Priorities</option>
+                    {priorities.map(priority => (
+                      <option key={priority} value={priority}>{priority}</option>
                     ))}
                   </select>
                 </div>
@@ -347,16 +320,16 @@ export default function ListManagementContent() {
                   </select>
                 </div>
 
-                {/* Utilisation Range */}
+                {/* PCS Score Range */}
                 <div>
-                  <label htmlFor="minUtil" className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Utilisation %
+                  <label htmlFor="minPcs" className="block text-sm font-medium text-gray-700 mb-1">
+                    Min PCS Score
                   </label>
                   <input
-                    id="minUtil"
+                    id="minPcs"
                     type="number"
                     min="0"
-                    max="100"
+                    max="50"
                     placeholder="0"
                     value={filters.minUtilisation || ''}
                     onChange={(e) => setFilters({ ...filters, minUtilisation: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -365,15 +338,15 @@ export default function ListManagementContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="maxUtil" className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Utilisation %
+                  <label htmlFor="maxPcs" className="block text-sm font-medium text-gray-700 mb-1">
+                    Max PCS Score
                   </label>
                   <input
-                    id="maxUtil"
+                    id="maxPcs"
                     type="number"
                     min="0"
-                    max="100"
-                    placeholder="100"
+                    max="50"
+                    placeholder="50"
                     value={filters.maxUtilisation || ''}
                     onChange={(e) => setFilters({ ...filters, maxUtilisation: e.target.value ? parseInt(e.target.value) : undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -408,104 +381,96 @@ export default function ListManagementContent() {
           </p>
         </div>
 
-        {/* Pool Data Table */}
+        {/* Procedure Pool Table */}
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12"></th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Procedure Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OPCS4 Codes</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialty</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subspecialty</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surgeon</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anaesthetist</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Procedures</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PCS</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisation</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PCS Score</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {poolData.map((list) => {
-                  const utilisation = Math.round((list.totalPCS / list.maxPCS) * 100);
-                  const isExpanded = expandedRow === list.id;
+                {poolData.map((procedure) => {
+                  const isExpanded = expandedRow === procedure.id;
 
                   return (
-                    <React.Fragment key={list.id}>
+                    <React.Fragment key={procedure.id}>
                       <tr className="hover:bg-gray-50">
                         <td className="px-4 py-3">
                           <button
-                            onClick={() => setExpandedRow(isExpanded ? null : list.id)}
+                            onClick={() => setExpandedRow(isExpanded ? null : procedure.id)}
                             className="p-1 hover:bg-gray-200 rounded transition-colors"
                           >
                             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </button>
                         </td>
-                        <td className="px-4 py-3 font-medium text-sm">W{list.weekNumber}</td>
-                        <td className="px-4 py-3 text-sm">{list.date}</td>
-                        <td className="px-4 py-3 text-sm">{list.dayOfWeek}</td>
+                        <td className="px-4 py-3 font-medium text-sm">{procedure.name}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div className="flex flex-wrap gap-1">
+                            {procedure.opcs4.map((code, idx) => (
+                              <span key={idx} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">
+                                {code}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{procedure.specialty}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{procedure.subspecialty || '-'}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div>
+                            <p className="font-medium">{procedure.surgeon}</p>
+                            <p className="text-xs text-gray-500">{procedure.surgeonInitials}</p>
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                            {list.sessionType}
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${getPriorityColor(procedure.priority)}`}>
+                            {procedure.priority}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {list.sessionStart}-{list.sessionEnd}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-sm">{list.specialty}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{list.subspecialty || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{list.surgeon}</td>
-                        <td className="px-4 py-3 text-sm">{list.anaesthetist}</td>
-                        <td className="px-4 py-3 text-center text-sm">{list.procedures?.length || 0}</td>
                         <td className="px-4 py-3">
-                          <span className="text-sm font-medium">
-                            {list.totalPCS}/{list.maxPCS}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-xs font-medium rounded ${getUtilisationColor(utilisation)}`}>
-                            {utilisation}%
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${getPcsScoreColor(procedure.pcsScore)}`}>
+                            {procedure.pcsScore}
                           </span>
                         </td>
                       </tr>
 
-                      {/* Expanded Row - Procedures */}
+                      {/* Expanded Row - Procedure Details */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan={13} className="px-4 py-4 bg-gray-50">
+                          <td colSpan={8} className="px-4 py-4 bg-gray-50">
                             <div className="space-y-3">
-                              <h4 className="font-semibold text-gray-900">Procedures ({list.procedures?.length || 0})</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {(list.procedures || []).map((proc, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="flex items-start gap-2 p-2 bg-white rounded border border-gray-200"
-                                  >
-                                    <span className={`px-2 py-1 text-xs font-medium rounded ${getPriorityColor(proc.priority)}`}>
-                                      {proc.priority}
-                                    </span>
-                                    <div className="flex-1">
-                                      <p className="text-sm font-medium text-gray-900">{proc.name}</p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs text-gray-500">
-                                          OPCS: {proc.opcs4.join(', ')}
-                                        </span>
-                                        <span className="text-xs font-medium text-blue-600">
-                                          PCS: {proc.pcsScore}
-                                        </span>
-                                        {proc.replaceable && (
-                                          <span className="px-2 py-0.5 text-xs border border-gray-300 rounded">
-                                            Replaceable
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
+                              <h4 className="font-semibold text-gray-900">Procedure Details</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-white rounded border border-gray-200 p-3">
+                                  <p className="text-xs text-gray-500 mb-1">Procedure ID</p>
+                                  <p className="text-sm font-medium">{procedure.id}</p>
+                                </div>
+                                <div className="bg-white rounded border border-gray-200 p-3">
+                                  <p className="text-xs text-gray-500 mb-1">Year</p>
+                                  <p className="text-sm font-medium">{procedure.year}</p>
+                                </div>
+                                <div className="bg-white rounded border border-gray-200 p-3">
+                                  <p className="text-xs text-gray-500 mb-1">Created At</p>
+                                  <p className="text-sm font-medium">{procedure.createdAt}</p>
+                                </div>
+                                <div className="bg-white rounded border border-gray-200 p-3">
+                                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                                  <p className="text-sm font-medium">
+                                    {procedure.isActive ? (
+                                      <span className="text-green-600">Active</span>
+                                    ) : (
+                                      <span className="text-gray-500">Inactive</span>
+                                    )}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -520,7 +485,7 @@ export default function ListManagementContent() {
 
           {poolData.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">No schedule lists found matching your filters.</p>
+              <p className="text-gray-500">No procedures found matching your filters.</p>
               <button
                 onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

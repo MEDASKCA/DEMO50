@@ -1019,7 +1019,7 @@ export default function ProceduresView({ onBack, isAdmin = false, socUnlocked: s
                                                 <td className="py-2 px-3 text-gray-700 pl-6">• Elective Inpatient</td>
                                                 <td className="py-2 px-3 text-right text-purple-600 font-semibold">{formatCurrency(costData.inpatientElective)}</td>
                                                 <td className="py-2 px-3 text-right text-gray-500 text-[10px]">
-                                                  {costData.avgLengthOfStay > 0 ? `${costData.avgLengthOfStay}d` : ''}
+                                                  {(costData.avgLengthOfStay || 0) > 0 ? `${costData.avgLengthOfStay}d` : ''}
                                                 </td>
                                               </tr>
                                             )}
@@ -1028,7 +1028,7 @@ export default function ProceduresView({ onBack, isAdmin = false, socUnlocked: s
                                                 <td className="py-2 px-3 text-gray-700 pl-6">• Emergency Inpatient</td>
                                                 <td className="py-2 px-3 text-right text-red-600 font-semibold">{formatCurrency(costData.inpatientEmergency)}</td>
                                                 <td className="py-2 px-3 text-right text-gray-500 text-[10px]">
-                                                  {costData.avgLengthOfStay > 0 ? `${costData.avgLengthOfStay}d` : ''}
+                                                  {(costData.avgLengthOfStay || 0) > 0 ? `${costData.avgLengthOfStay}d` : ''}
                                                 </td>
                                               </tr>
                                             )}

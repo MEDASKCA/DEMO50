@@ -808,6 +808,7 @@ export async function generateScheduleFromConfig(
     subspecialtyName?: string;
     priority: number;
     sessionTypePreferences?: SessionTypePreference[]; // NEW: session type priorities
+    daysOfWeek?: number[]; // Days of week this specialty runs [0=Sun, 1=Mon, ..., 6=Sat]
   }
 
   const theatreAssignments = new Map<string, TheatreSpecialtyAssignment[]>();

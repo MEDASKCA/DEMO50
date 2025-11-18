@@ -36,7 +36,7 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
     {
       id: '1',
       role: 'assistant',
-      content: getRandomGreeting(),
+      content: "Hello! I'm TOM, your Theatre Operations Manager. How can I assist you today?",
       timestamp: new Date()
     }
   ]);
@@ -75,6 +75,21 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
     if (typeof window !== 'undefined') {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+  }, []);
+
+  // Update initial greeting with random one after client-side mount to fix hydration
+  useEffect(() => {
+    setMessages((prevMessages) => {
+      if (prevMessages.length === 1 && prevMessages[0].id === '1') {
+        return [
+          {
+            ...prevMessages[0],
+            content: getRandomGreeting()
+          }
+        ];
+      }
+      return prevMessages;
+    });
   }, []);
 
   // Audio Feedback Functions - ChatGPT-style sounds
@@ -702,8 +717,26 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
       };
 
       utterance.onerror = (event) => {
-        console.error('Speech error:', event);
+        console.error('Speech error:', {
+          error: event.error,
+          message: event.message || 'Speech synthesis failed',
+          charIndex: event.charIndex
+        });
         isSpeakingRef.current = false;
+
+        // Reset UI state and restart listening if in voice mode
+        if (isVoiceModeRef.current) {
+          setVoiceUiMode('listening');
+          setTimeout(() => {
+            try {
+              voiceModeRecognitionRef.current?.start();
+            } catch (e) {
+              console.log('Could not restart recognition after speech error:', e);
+            }
+          }, 200);
+        } else {
+          setVoiceUiMode('idle');
+        }
       };
 
       window.speechSynthesis.speak(utterance);
@@ -870,7 +903,7 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
                   isListening={voiceUiMode === 'listening'}
                   isSpeaking={voiceUiMode === 'speaking'}
                   size={280}
-                  variant="standalone"
+                  variant="fixed"
                 />
               </div>
             </div>

@@ -298,7 +298,7 @@ export default function TheatreCalendar({
     // Find the full specialty name from the ID
     const specialty = ALL_SPECIALTIES.find(s => s.id === specialtyId);
     if (!specialty) return [];
-    return consultants.filter((c) => c.specialty === specialty.name);
+    return consultants.filter((c) => c.specialties.includes(specialty.name));
   };
 
   const getSpecialtyColor = (specialtyId: string): string => {
@@ -499,7 +499,7 @@ export default function TheatreCalendar({
     selectedUnitIds.forEach(unitId => {
       const unit = units.find(u => u.id === unitId);
       if (unit?.specialties) {
-        unit.specialties.forEach(specId => availableSpecialtyIds.add(specId));
+        unit.specialties.forEach((specId: string) => availableSpecialtyIds.add(specId));
       }
     });
 
