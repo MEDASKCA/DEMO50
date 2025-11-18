@@ -10,6 +10,7 @@ import {
   LineChart, AlertCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import MedaskLogo from '@/components/MedaskLogo';
 
 export default function Home() {
   const router = useRouter();
@@ -104,19 +105,19 @@ export default function Home() {
     },
     {
       icon: Database,
-      title: "Intelligent Data Integration",
-      description: "Retrieval-Augmented Generation ensures accurate, data-backed responses from your systems",
+      title: "Smart System Connection",
+      description: "Pulls real information from all your systems, never makes things up, always shows its sources",
       gradient: "from-green-500 to-teal-500",
       delay: 0.5,
       detailedContent: {
-        title: "Intelligent Data Integration",
+        title: "Smart System Connection",
         problem: "NHS trusts operate data silos - patient administration, theatre management, rostering, inventory, and finance rarely communicate. Staff manually reconcile information, leading to errors, delays, and duplicated effort costing millions annually.",
-        solution: "TOM uses Retrieval-Augmented Generation (RAG) to securely connect all your systems while respecting access controls and data governance. It retrieves real-time information from multiple sources and synthesizes it into coherent, accurate answers - never inventing data, always showing sources.",
-        example: "Finance asks TOM: 'What's driving our agency staff spend in theatres?' TOM queries rostering (vacancy patterns), theatre system (case volumes), HR (recruitment pipeline), and finance (cost breakdown), then presents: 'Primary driver: 12 unfilled Band 6 posts. Cases up 18% vs. plan. 3 recruits start next month. Suggested interim: internal bank incentives could save £45k vs. agency.'",
+        solution: "TOM acts like an incredibly organized assistant who knows exactly where every piece of information lives. When you ask a question, it searches all your systems simultaneously, pulls the relevant data, and presents it in a clear answer - showing you exactly where each fact came from. It never guesses or invents information; it only works with real data from your actual systems.",
+        example: "Finance asks TOM: 'What's driving our agency staff spend in theatres?' TOM searches your rostering system (finding vacancy patterns), theatre system (case volumes), HR database (recruitment pipeline), and finance records (cost breakdown), then explains: 'Primary driver: 12 unfilled Band 6 posts. Cases up 18% vs. plan. 3 recruits start next month. Suggested interim: internal bank incentives could save £45k vs. agency.' Each fact links back to its source system.",
         benefits: [
           "Break down data silos without expensive system replacements",
-          "Single source of truth across all departments",
-          "Audit trail showing exactly where information came from",
+          "One place to get answers from all your systems",
+          "See exactly where every piece of information comes from",
           "Meets NHS data security and governance standards"
         ]
       }
@@ -236,6 +237,16 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="text-center"
           >
+            {/* MEDASKCA Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.6 }}
+              className="flex justify-center mb-6"
+            >
+              <MedaskLogo size={140} variant="compact" animate={true} />
+            </motion.div>
+
             {/* Floating badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -254,12 +265,8 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="text-6xl sm:text-7xl lg:text-8xl font-bold mb-6"
+              className="text-6xl sm:text-7xl lg:text-8xl font-black mb-6"
             >
-              <span className="inline-block bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent">
-                Meet
-              </span>
-              <br />
               <motion.span
                 className="inline-block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent"
                 animate={{
@@ -274,8 +281,12 @@ export default function Home() {
                   backgroundSize: '200% 200%'
                 }}
               >
-                TOM AI
+                TOM
               </motion.span>
+              <br />
+              <span className="inline-block text-gray-700 dark:text-gray-300 text-5xl sm:text-6xl lg:text-7xl">
+                by MEDASKCA<sup className="text-2xl sm:text-3xl">™</sup>
+              </span>
             </motion.h1>
 
             <motion.p
@@ -291,11 +302,11 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="text-lg text-gray-500 dark:text-gray-400 mb-12 max-w-2xl mx-auto font-light"
+              className="text-lg text-gray-500 dark:text-gray-400 mb-8 max-w-3xl mx-auto font-light leading-relaxed"
             >
-              AI-powered intelligence that connects and amplifies your existing NHS systems
-              <span className="block mt-2 font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Making your current infrastructure work smarter, not harder
+              Every day, NHS theatre departments juggle complex schedules, manage precious resources, and coordinate skilled teams - all while navigating multiple disconnected computer systems. Meanwhile, <span className="font-medium text-gray-700 dark:text-gray-300">7.6 million patients wait</span>, and trusts spend <span className="font-medium text-gray-700 dark:text-gray-300">£10.4 billion annually</span> on temporary staff to fill gaps.
+              <span className="block mt-4 font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                TOM connects all your existing systems with intelligent automation, turning data chaos into coordinated action
               </span>
             </motion.p>
 
@@ -368,6 +379,43 @@ export default function Home() {
             </motion.div>
           ))}
         </div>
+      </div>
+
+      {/* NHS Background Section */}
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="p-8 md:p-12 rounded-3xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 border-2 border-blue-100 dark:border-gray-700"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            The Reality of NHS Theatre Operations
+          </h2>
+
+          <div className="space-y-6 text-lg text-gray-700 dark:text-gray-300 leading-relaxed font-light">
+            <p>
+              Operating theatres are the beating heart of any NHS trust. Here, highly skilled teams perform life-saving procedures, from emergency appendectomies to complex cardiac surgery. But behind every successful operation lies an intricate web of coordination: scheduling surgeons, anaesthetists, and nurses; ensuring the right equipment is sterilized and ready; managing bed capacity; tracking consumables; and responding to emergencies that disrupt carefully planned schedules.
+            </p>
+
+            <p>
+              Traditionally, this coordination happens across <span className="font-medium text-gray-900 dark:text-white">multiple disconnected computer systems</span>. Theatre coordinators might check the theatre management system for bookings, the rostering system for staff availability, the inventory system for supplies, the patient administration system for medical records, and email for last-minute changes. Each login, each search, each cross-reference takes time - time that could be spent on patient care.
+            </p>
+
+            <p className="bg-white/60 dark:bg-gray-800/60 p-6 rounded-xl border-l-4 border-blue-600">
+              <span className="font-semibold text-gray-900 dark:text-white">The cost is staggering:</span> NHS England spent <span className="font-bold text-blue-600">£10.4 billion</span> on temporary staffing in 2023/24. Over <span className="font-bold text-blue-600">43,000 nursing vacancies</span> exist while 46% of nurses plan to leave (RCN). Meanwhile, <span className="font-bold text-blue-600">7.61 million people</span> await procedures. Lord Carter identified <span className="font-bold text-blue-600">£5 billion in potential efficiency savings</span>, with £1 billion from procurement alone - some trusts pay 22 different prices for identical surgical tools.
+            </p>
+
+            <p>
+              The NHS Long Term Plan calls for digital transformation, better data sharing, and integrated care. But most trusts can't afford to rip out and replace their existing systems. What they need is a way to make those systems <span className="font-medium text-gray-900 dark:text-white">work together intelligently</span>, to surface the right information at the right time, and to spot problems before they become crises.
+            </p>
+
+            <p className="text-xl font-medium text-center pt-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              That's exactly what TOM does.
+            </p>
+          </div>
+        </motion.div>
       </div>
 
       {/* Features Grid - Changed heading */}
