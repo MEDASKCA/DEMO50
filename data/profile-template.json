@@ -1,0 +1,263 @@
+{
+  "id": "TOM-NHS-2024-XXXX",
+  "firstName": "",
+  "lastName": "",
+  "postNominals": [],
+  "professionalQualification": "",
+  "roles": [],
+  "band": "",
+  "rating": 0,
+  "totalShifts": 0,
+  "completedShifts": 0,
+
+  "contactDetails": {
+    "email": "",
+    "phone": "",
+    "preferredContact": "email"
+  },
+
+  "location": {
+    "currentTrust": "",
+    "currentHospital": "",
+    "postcode": "",
+    "area": "",
+    "willingToTravel": 0
+  },
+
+  "yearsExperience": 0,
+  "connections": 0,
+
+  "competencyStats": {
+    "mandatory": 0,
+    "clinical": 0,
+    "technical": 0,
+    "professional": 0
+  },
+
+  "specialtyTree": [
+    {
+      "name": "",
+      "subcategories": [
+        {
+          "name": "",
+          "procedures": []
+        }
+      ]
+    }
+  ],
+
+  "surgicalCompetencies": [
+    {
+      "specialty": "",
+      "subcategories": [
+        {
+          "name": "",
+          "procedures": [
+            {
+              "name": "",
+              "opcs4": [],
+              "level": "",
+              "yearsExperience": 0,
+              "frequency": "",
+              "lastPerformed": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "competencyTree": [
+    {
+      "name": "",
+      "icon": "",
+      "subcategories": [
+        {
+          "name": "",
+          "items": [
+            {
+              "name": "",
+              "level": "",
+              "expiry": "",
+              "provider": "",
+              "description": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "employmentHistory": [
+    {
+      "employer": "",
+      "hospital": "",
+      "department": "",
+      "position": "",
+      "band": "",
+      "type": "",
+      "startDate": "",
+      "endDate": null,
+      "specialties": [],
+      "responsibilities": [],
+      "verifiedBy": "",
+      "verifiedByRole": "",
+      "verifiedDate": "",
+      "verified": false
+    }
+  ],
+
+  "education": [
+    {
+      "institution": "",
+      "degree": "",
+      "field": "",
+      "grade": "",
+      "startDate": "",
+      "endDate": "",
+      "description": "",
+      "verified": false,
+      "verificationLink": "",
+      "certificateNumber": ""
+    }
+  ],
+
+  "certifications": [
+    {
+      "name": "",
+      "issuer": "",
+      "number": "",
+      "issueDate": "",
+      "expiryDate": null,
+      "status": ""
+    }
+  ],
+
+  "memberships": [
+    {
+      "organization": "",
+      "role": "",
+      "startDate": "",
+      "current": true,
+      "description": ""
+    }
+  ],
+
+  "recommendations": [
+    {
+      "author": "",
+      "authorRole": "",
+      "authorOrganization": "",
+      "relationship": "",
+      "date": "",
+      "text": ""
+    }
+  ],
+
+  "awards": [
+    {
+      "title": "",
+      "issuer": "",
+      "date": "",
+      "description": ""
+    }
+  ],
+
+  "volunteerWork": [
+    {
+      "organization": "",
+      "role": "",
+      "location": "",
+      "startDate": "",
+      "endDate": null,
+      "description": "",
+      "activities": []
+    }
+  ],
+
+  "publications": [
+    {
+      "title": "",
+      "type": "",
+      "publisher": "",
+      "date": "",
+      "description": "",
+      "coAuthors": []
+    }
+  ],
+
+  "languages": [
+    {
+      "language": "",
+      "proficiency": ""
+    }
+  ],
+
+  "interests": [
+    {
+      "category": "",
+      "items": []
+    }
+  ],
+
+  "compliance": {
+    "dbs": {
+      "status": "",
+      "expiryDate": "",
+      "updateService": false,
+      "certificateNumber": ""
+    },
+    "hcpc": {
+      "status": "",
+      "number": "",
+      "expiryDate": "",
+      "revalidationDue": ""
+    },
+    "occupationalHealth": {
+      "status": "",
+      "lastAssessment": "",
+      "nextDue": "",
+      "restrictions": []
+    },
+    "mandatoryTraining": [
+      {
+        "name": "",
+        "status": "",
+        "expiry": ""
+      }
+    ],
+    "immunisations": [
+      {
+        "name": "",
+        "status": "",
+        "lastDose": "",
+        "boosterDue": null
+      }
+    ],
+    "indemnityInsurance": {
+      "provider": "",
+      "policyNumber": "",
+      "coverage": "",
+      "expiryDate": ""
+    }
+  },
+
+  "preferences": {
+    "shifts": [],
+    "travel": {
+      "max": 0,
+      "unit": "miles"
+    },
+    "minRate": 0,
+    "maxHoursPerWeek": 0
+  },
+
+  "trackRecord": {
+    "reliability": 0,
+    "endorsements": 0,
+    "shiftsCancelled": 0,
+    "shiftsCompleted": 0
+  },
+
+  "willingToWorkAt": []
+}

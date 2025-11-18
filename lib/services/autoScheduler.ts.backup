@@ -1,0 +1,688 @@
+// Auto-Scheduler Service
+// Automatically generates theatre schedules based on your Firebase configurations
+// NO SCRIPTS NEEDED - reads directly from your theatre mappings and priorities
+
+import { db } from '../firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { TheatreList, SessionType, SESSION_CONFIGS } from '../theatreListTypes';
+import { generateTheatreList } from './theatreListGenerator';
+import { SURGICAL_PROCEDURES_BY_SPECIALTY, Procedure } from '../surgicalCompetencyData';
+import { SESSION_TYPE_PRESETS } from '../scheduling/sessionTypes';
+
+interface TheatreMapping {
+  specialtyId: string;
+  specialtyName: string;
+  subspecialtyName?: string;
+  theatreId: string;
+  theatreName: string;
+  unitId: string;
+  unitName: string;
+  priority: number;
+}
+
+interface TheatreUnit {
+  id: string;
+  name: string;
+  location: string;
+  numberOfTheatres: number;
+  hospitalId: string;
+}
+
+interface Theatre {
+  id: string;
+  name: string;
+  unitId: string;
+  status: 'available' | 'maintenance' | 'closed';
+  maintenanceUntil?: string;
+  openingHours: {
+    start: string;
+    end: string;
+  };
+  sessionDuration: number;
+}
+
+interface WaitingListProcedure {
+  id: string;
+  patientName: string;
+  hospitalNumber: string;
+  procedureName: string;
+  procedureCode: string; // OPCS-4 code
+  priority: 'Urgent' | 'Expedited' | 'Routine' | 'Planned';
+  consultantId: string;
+  consultantName: string;
+  specialtyId: string;
+  specialtyName: string;
+  subspecialtyName?: string;
+  referralDate: string;
+  targetDate: string;
+  waitingDays: number;
+  isScheduled: boolean;
+  sessionId?: string;
+}
+
+interface SurgeonSchedule {
+  surgeonId: string;
+  surgeonName: string;
+  date: string;
+  sessionType: string;
+  theatreId: string;
+}
+
+// Anaesthetists will be loaded from Firestore
+
+/**
+ * Load specialty-theatre mappings from Firebase
+ */
+async function loadTheatreMappings(hospitalId: string): Promise<TheatreMapping[]> {
+  const mappings: TheatreMapping[] = [];
+
+  try {
+    // Query for the selected hospital's mappings
+    const q = query(
+      collection(db, 'specialtyTheatreMappings'),
+      where('hospitalId', '==', hospitalId)
+    );
+
+    const snapshot = await getDocs(q);
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // Support BOTH data structures:
+      // 1. theatrePriorities field (setup script format)
+      // 2. theatres field (Configurations UI format)
+
+      if (data.theatrePriorities && Array.isArray(data.theatrePriorities)) {
+        // Format 1: theatrePriorities (from setup script)
+        data.theatrePriorities.forEach((tp: any) => {
+          mappings.push({
+            specialtyId: data.specialtyId,
+            specialtyName: data.specialtyName,
+            subspecialtyName: data.subspecialtyName,
+            theatreId: tp.theatreId,
+            theatreName: tp.theatreName,
+            unitId: tp.unitId || '',
+            unitName: tp.unitName || '',
+            priority: tp.priority
+          });
+        });
+      } else if (data.theatres && Array.isArray(data.theatres)) {
+        // Format 2: theatres (from Configurations UI)
+        data.theatres.forEach((t: any) => {
+          mappings.push({
+            specialtyId: data.specialtyId || '',
+            specialtyName: data.specialtyName,
+            subspecialtyName: data.subspecialtyName,
+            theatreId: t.theatreId,
+            theatreName: t.theatreName,
+            unitId: data.unitId || '',
+            unitName: data.unitName || '',
+            priority: t.priority || 1
+          });
+        });
+      }
+    });
+
+    console.log(`✅ Loaded ${mappings.length} theatre mappings from Firebase`);
+    return mappings;
+  } catch (error) {
+    console.error('Error loading theatre mappings:', error);
+    return [];
+  }
+}
+
+/**
+ * Load theatres from Firebase
+ */
+async function loadTheatres(hospitalId: string): Promise<Theatre[]> {
+  const theatres: Theatre[] = [];
+
+  try {
+    // Query for the selected hospital's theatres
+    const q = query(
+      collection(db, 'theatres'),
+      where('hospitalId', '==', hospitalId)
+    );
+
+    const snapshot = await getDocs(q);
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      theatres.push({
+        id: doc.id,
+        name: data.name,
+        unitId: data.unitId,
+        status: data.status || 'available',
+        maintenanceUntil: data.maintenanceUntil,
+        openingHours: data.openingHours || { start: '08:00', end: '18:00' },
+        sessionDuration: data.sessionDuration || 240
+      });
+    });
+
+    console.log(`✅ Loaded ${theatres.length} theatres from Firebase`);
+    return theatres;
+  } catch (error) {
+    console.error('Error loading theatres:', error);
+    return [];
+  }
+}
+
+/**
+ * Load anaesthetists from Firebase
+ */
+async function loadAnaesthetists(hospitalId: string): Promise<any[]> {
+  try {
+    const anaesSnap = await getDocs(collection(db, 'anaesthetists'));
+    const anaesthetists: any[] = [];
+
+    anaesSnap.forEach(doc => {
+      const data = doc.data();
+      anaesthetists.push({
+        id: doc.id,
+        name: data.fullName || `${data.title} ${data.firstName} ${data.lastName}`,
+        initials: data.initials || getInitials(`${data.firstName} ${data.lastName}`)
+      });
+    });
+
+    return anaesthetists;
+  } catch (error) {
+    console.error('Error loading anaesthetists:', error);
+    return [];
+  }
+}
+
+/**
+ * Load consultants/surgeons from Firebase
+ */
+async function loadConsultants(hospitalId: string, specialty: string): Promise<any[]> {
+  try {
+    // Try surgeons collection first (user's actual data)
+    const surgeonsSnap = await getDocs(collection(db, 'surgeons'));
+    const consultants: any[] = [];
+
+    surgeonsSnap.forEach(doc => {
+      const data = doc.data();
+      // Match by specialty name (case-insensitive)
+      const surgeonSpecialty = data.specialtyName || data.specialty || '';
+      if (surgeonSpecialty.toLowerCase() === specialty.toLowerCase()) {
+        const firstName = data.firstName || '';
+        const lastName = data.lastName || '';
+        const title = data.title || 'Mr';
+        const fullName = `${title} ${firstName} ${lastName}`.trim();
+
+        consultants.push({
+          id: doc.id,
+          fullName: fullName,
+          initials: data.initials || getInitials(`${firstName} ${lastName}`),
+          specialty: surgeonSpecialty
+        });
+      }
+    });
+
+    return consultants;
+  } catch (error) {
+    console.error('Error loading consultants:', error);
+    return [];
+  }
+}
+
+function getInitials(fullName: string): string {
+  const parts = fullName.split(' ');
+  if (parts.length >= 2) {
+    return parts[0][0] + parts[parts.length - 1][0];
+  }
+  return fullName.substring(0, 2).toUpperCase();
+}
+
+/**
+ * Load procedures from waiting list (procedures pool)
+ */
+async function loadProceduresFromWaitingList(
+  specialty: string,
+  consultantId?: string
+): Promise<WaitingListProcedure[]> {
+  try {
+    let q = query(
+      collection(db, 'waitingList'),
+      where('isScheduled', '==', false), // Only unscheduled procedures
+      where('specialtyName', '==', specialty)
+    );
+
+    if (consultantId) {
+      q = query(q, where('consultantId', '==', consultantId));
+    }
+
+    const snapshot = await getDocs(q);
+    const procedures: WaitingListProcedure[] = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      procedures.push({
+        id: doc.id,
+        patientName: `${data.firstName} ${data.lastName}`,
+        hospitalNumber: data.hospitalNumber,
+        procedureName: data.procedureName,
+        procedureCode: data.procedureCode,
+        priority: data.priority,
+        consultantId: data.consultantId,
+        consultantName: data.consultantName,
+        specialtyId: data.specialtyId,
+        specialtyName: data.specialtyName,
+        subspecialtyName: data.subspecialtyName,
+        referralDate: data.referralDate,
+        targetDate: data.targetDate,
+        waitingDays: data.waitingDays,
+        isScheduled: data.isScheduled || false,
+        sessionId: data.sessionId
+      });
+    });
+
+    // Sort by priority (Urgent first) and waiting days (longer wait first)
+    return procedures.sort((a, b) => {
+      const priorityOrder: Record<string, number> = { 'Urgent': 0, 'Expedited': 1, 'Routine': 2, 'Planned': 3 };
+      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+      return b.waitingDays - a.waitingDays;
+    });
+  } catch (error) {
+    console.error('Error loading procedures from waiting list:', error);
+    return [];
+  }
+}
+
+/**
+ * Convert waiting list procedures to Procedure format for generateTheatreList
+ */
+function convertWaitingListToProcedures(waitingListProcs: WaitingListProcedure[]): Procedure[] {
+  return waitingListProcs.map(wlProc => ({
+    name: wlProc.procedureName,
+    opcs4: [wlProc.procedureCode],
+    commonVariations: [],
+    specialtyName: wlProc.specialtyName,
+    subspecialtyName: wlProc.subspecialtyName
+  }));
+}
+
+/**
+ * Get procedures for a specialty (LEGACY - for fallback)
+ */
+function getProceduresForSpecialty(specialty: string): Procedure[] {
+  const procedures: Procedure[] = [];
+
+  const specialtyMap: { [key: string]: string[] } = {
+    'Orthopaedics': ['Trauma Orthopaedics', 'Elective Orthopaedics'],
+    'Trauma': ['Trauma Orthopaedics'],
+    'General Surgery': ['General Surgery', 'Emergency Surgery', 'Colorectal', 'Upper GI'],
+    'Emergency': ['Emergency Surgery', 'General Surgery'],
+    'Colorectal': ['Colorectal'],
+    'Hepatobiliary': ['Hepatobiliary'],
+    'Upper GI': ['Upper GI'],
+    'Vascular': ['Vascular'],
+    'Urology': ['Urology'],
+    'Gynaecology': ['Gynaecology'],
+    'ENT': ['ENT'],
+    'Ophthalmology': ['Ophthalmology'],
+    'Plastic Surgery': ['Plastic Surgery'],
+    'Maxillofacial': ['Maxillofacial'],
+    'Neurosurgery': ['Neurosurgery'],
+    'Cardiac': ['Cardiac'],
+    'Endoscopy': ['Endoscopy']
+  };
+
+  const categories = specialtyMap[specialty] || [specialty];
+
+  for (const category of categories) {
+    const specialtyData = SURGICAL_PROCEDURES_BY_SPECIALTY[category as keyof typeof SURGICAL_PROCEDURES_BY_SPECIALTY];
+    if (specialtyData && 'subcategories' in specialtyData) {
+      const subcats: any = specialtyData.subcategories;
+      for (const subcatKey of Object.keys(subcats)) {
+        const subcat = subcats[subcatKey];
+        if (subcat && subcat.procedures && Array.isArray(subcat.procedures)) {
+          procedures.push(...subcat.procedures);
+        }
+      }
+    }
+  }
+
+  return procedures;
+}
+
+/**
+ * Determine procedure count limit based on session type
+ * User requirements: 4 for AD (All Day 8-6), 6 for ADE (All Day Extended 8-8)
+ */
+function getProcedureCountForSessionType(sessionTypeId: string): number {
+  // Session type mapping from lib/scheduling/sessionTypes.ts:
+  // 'day' = 'All Day (08:00-18:00)' = AD = 4 procedures
+  // 'long-day' = 'All Day Extended (08:00-20:00)' = ADE = 6 procedures
+
+  switch (sessionTypeId) {
+    case 'day': // AD: 08:00-18:00
+      return 4;
+    case 'long-day': // ADE: 08:00-20:00
+      return 6;
+    case 'am': // AM: 08:00-13:00
+      return 3;
+    case 'pm': // PM: 13:00-18:00
+      return 3;
+    case 'pme': // PME: 13:00-20:00
+      return 4;
+    case 'night': // NIGHT: 20:00-08:00
+      return 6;
+    default:
+      return 4; // Default fallback
+  }
+}
+
+/**
+ * Check if surgeon is already scheduled on this date/session
+ */
+function isSurgeonAvailable(
+  surgeonId: string,
+  date: string,
+  sessionType: string,
+  scheduledSurgeons: SurgeonSchedule[]
+): boolean {
+  return !scheduledSurgeons.some(
+    schedule =>
+      schedule.surgeonId === surgeonId &&
+      schedule.date === date &&
+      schedule.sessionType === sessionType
+  );
+}
+
+/**
+ * Determine session type based on theatre name and specialty (LEGACY)
+ */
+function getSessionType(theatreName: string, specialtyName: string): SessionType {
+  const nameLower = theatreName.toLowerCase();
+  const specialtyLower = specialtyName.toLowerCase();
+
+  // Emergency and Trauma run FULL sessions (08:00-20:00) 7 days/week
+  if (specialtyLower.includes('emergency') || specialtyLower.includes('trauma')) {
+    return 'FULL';
+  }
+
+  // Default to AM and PM sessions for elective cases
+  return Math.random() < 0.5 ? 'AM' : 'PM';
+}
+
+/**
+ * Check if theatre is available on a given date
+ */
+function isTheatreAvailable(theatre: Theatre, date: Date): boolean {
+  // Check if under maintenance
+  if (theatre.status === 'maintenance' && theatre.maintenanceUntil) {
+    const maintenanceEnd = new Date(theatre.maintenanceUntil);
+    if (date <= maintenanceEnd) {
+      return false; // Blocked due to maintenance
+    }
+  }
+
+  // Weekend check - but NOT blocking, just informational
+  const dayOfWeek = date.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  // Emergency/Trauma theatres operate on weekends
+  if (theatre.name.toLowerCase().includes('emergency') ||
+      theatre.name.toLowerCase().includes('trauma')) {
+    return true;
+  }
+
+  // Regular theatres on weekends - still available for scheduling if needed
+  // (user can override weekend closure)
+  return true;
+}
+
+/**
+ * AUTO-GENERATE schedule for a date range based on Firebase configurations
+ * READS DIRECTLY FROM YOUR CONFIGURATIONS - NO DUPLICATION!
+ * NOW WITH SMART PROCEDURE ALLOCATION FROM WAITING LIST!
+ */
+export async function generateScheduleFromConfig(
+  hospitalId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<TheatreList[]> {
+  console.log('🤖 AUTO-SCHEDULER: Starting (Smart Mode - Using Procedures Pool)...');
+  console.log(`📅 Date range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+  console.log('📖 Reading configurations from Firebase...\n');
+
+  const lists: TheatreList[] = [];
+  const scheduledSurgeons: SurgeonSchedule[] = []; // Track surgeon conflicts
+
+  // Load configurations from Firebase
+  const mappings = await loadTheatreMappings(hospitalId);
+  const theatres = await loadTheatres(hospitalId);
+  const anaesthetists = await loadAnaesthetists(hospitalId);
+
+  console.log(`✅ Loaded ${mappings.length} specialty-theatre mappings`);
+  console.log(`✅ Loaded ${theatres.length} theatres`);
+  console.log(`✅ Loaded ${anaesthetists.length} anaesthetists`);
+
+  if (mappings.length === 0) {
+    console.warn('⚠️  No theatre mappings found. Please configure specialty-theatre mappings first.');
+    return [];
+  }
+
+  if (theatres.length === 0) {
+    console.warn('⚠️  No theatres found. Please configure theatre units first.');
+    return [];
+  }
+
+  // Group mappings by theatre AND subspecialty
+  // KEY RULE: One list = ONE subspecialty (no mixing!)
+  const theatreMappings = new Map<string, TheatreMapping[]>();
+  mappings.forEach(mapping => {
+    if (!theatreMappings.has(mapping.theatreId)) {
+      theatreMappings.set(mapping.theatreId, []);
+    }
+    theatreMappings.get(mapping.theatreId)!.push(mapping);
+  });
+
+  // Sort mappings by priority for each theatre
+  theatreMappings.forEach(mappings => {
+    mappings.sort((a, b) => a.priority - b.priority);
+  });
+
+  console.log(`\n🏥 Processing ${theatres.length} theatres...`);
+
+  // Generate lists for each day
+  const currentDate = new Date(startDate);
+  let dayCount = 0;
+
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay();
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    dayCount++;
+    console.log(`\n📅 Day ${dayCount}: ${currentDate.toISOString().split('T')[0]} (${dayName})`);
+
+    // Process each theatre
+    for (const theatre of theatres) {
+      // Check if theatre is available
+      if (!isTheatreAvailable(theatre, currentDate)) {
+        console.log(`   ⏸️  ${theatre.name}: Under maintenance`);
+        continue; // Skip if under maintenance
+      }
+
+      // Get mappings for this theatre
+      const theatreSpecialties = theatreMappings.get(theatre.id) || [];
+
+      if (theatreSpecialties.length === 0) {
+        console.log(`   ⚠️  ${theatre.name}: No specialty mappings`);
+        continue; // No specialties mapped to this theatre
+      }
+
+      // Check if this is Emergency/Trauma (operates 7 days/week)
+      const isEmergencyTheatre = theatre.name.toLowerCase().includes('emergency') ||
+                                 theatre.name.toLowerCase().includes('trauma');
+
+      // Skip weekends for non-emergency/trauma theatres
+      if (isWeekend && !isEmergencyTheatre) {
+        console.log(`   🚫 ${theatre.name}: Closed (Weekend)`);
+        continue;
+      }
+
+      // Get highest priority specialty for this theatre
+      const mapping = theatreSpecialties[0]; // Already sorted by priority
+
+      console.log(`   ✨ ${theatre.name}: ${mapping.specialtyName}${mapping.subspecialtyName ? ` - ${mapping.subspecialtyName}` : ''} (Priority ${mapping.priority})`);
+
+      // Get consultants for this specialty
+      const consultants = await loadConsultants(hospitalId, mapping.specialtyName);
+
+      if (consultants.length === 0) {
+        console.warn(`      ⚠️  No consultants found for ${mapping.specialtyName}`);
+        continue;
+      }
+
+      // Find an available consultant (check conflicts)
+      const dateStr = currentDate.toISOString().split('T')[0];
+      let surgeon = null;
+      let attempts = 0;
+
+      while (!surgeon && attempts < consultants.length) {
+        const candidate = consultants[Math.floor(Math.random() * consultants.length)];
+        const sessionTypeForConflict = getSessionType(theatre.name, mapping.specialtyName);
+
+        if (isSurgeonAvailable(candidate.id, dateStr, sessionTypeForConflict, scheduledSurgeons)) {
+          surgeon = candidate;
+          // Record this surgeon's schedule
+          scheduledSurgeons.push({
+            surgeonId: candidate.id,
+            surgeonName: candidate.fullName,
+            date: dateStr,
+            sessionType: sessionTypeForConflict,
+            theatreId: theatre.id
+          });
+        }
+        attempts++;
+      }
+
+      if (!surgeon) {
+        console.warn(`      ⚠️  No available consultants (all busy) for ${mapping.specialtyName}`);
+        continue;
+      }
+
+      // Pick a random anaesthetist
+      if (anaesthetists.length === 0) {
+        console.warn(`      ⚠️  No anaesthetists available`);
+        continue;
+      }
+      const anaesthetist = anaesthetists[Math.floor(Math.random() * anaesthetists.length)];
+
+      // 🚀 SMART PROCEDURE ALLOCATION: Load from waiting list
+      console.log(`      📋 Loading procedures from waiting list...`);
+      let waitingListProcedures = await loadProceduresFromWaitingList(
+        mapping.specialtyName,
+        surgeon.id // Filter by this surgeon's patients
+      );
+
+      // Determine session type
+      const sessionType = getSessionType(theatre.name, mapping.specialtyName);
+
+      // Determine if this is emergency/trauma
+      const isEmergency = theatre.name.toLowerCase().includes('emergency');
+      const isTrauma = theatre.name.toLowerCase().includes('trauma');
+
+      // If no procedures in waiting list, fallback to legacy hardcoded data
+      let procedures: Procedure[] = [];
+      if (waitingListProcedures.length === 0) {
+        console.warn(`      ⚠️  No procedures in waiting list for ${mapping.specialtyName}, using fallback data`);
+        procedures = getProceduresForSpecialty(mapping.specialtyName);
+
+        if (procedures.length === 0) {
+          console.warn(`      ⚠️  No procedures found (even in fallback)`);
+          continue;
+        }
+
+        // Generate the theatre list using legacy method
+        const list = generateTheatreList(
+          new Date(currentDate),
+          theatre.id,
+          theatre.name,
+          mapping.unitId,
+          mapping.unitName,
+          hospitalId,
+          'Royal London Hospital',
+          mapping.specialtyName,
+          sessionType,
+          procedures,
+          surgeon.fullName,
+          surgeon.initials,
+          anaesthetist.name,
+          anaesthetist.initials,
+          isEmergency || isTrauma,
+          mapping.subspecialtyName
+        );
+
+        lists.push(list);
+        console.log(`      ✅ Generated ${list.totalCases} cases (Legacy Mode)`);
+      } else {
+        // 🎯 SMART MODE: Use waiting list procedures with count limits
+        // TODO: Determine session type ID from Firestore or use 'day' as default
+        const sessionTypeId = 'day'; // Default to All Day (08:00-18:00)
+        const procedureLimit = getProcedureCountForSessionType(sessionTypeId);
+
+        console.log(`      🎯 Smart Mode: Allocating up to ${procedureLimit} procedures for session type '${sessionTypeId}'`);
+        console.log(`      📊 Available procedures in pool: ${waitingListProcedures.length}`);
+
+        // Take top N procedures based on priority
+        const selectedWaitingListProcs = waitingListProcedures.slice(0, procedureLimit);
+
+        if (selectedWaitingListProcs.length === 0) {
+          console.warn(`      ⚠️  No procedures selected`);
+          continue;
+        }
+
+        // Convert to Procedure format for theatre list generation
+        const proceduresForList = convertWaitingListToProcedures(selectedWaitingListProcs);
+
+        // Generate the theatre list using smart allocation
+        const list = generateTheatreList(
+          new Date(currentDate),
+          theatre.id,
+          theatre.name,
+          mapping.unitId,
+          mapping.unitName,
+          hospitalId,
+          'Royal London Hospital',
+          mapping.specialtyName,
+          sessionType,
+          proceduresForList,
+          surgeon.fullName,
+          surgeon.initials,
+          anaesthetist.name,
+          anaesthetist.initials,
+          isEmergency || isTrauma,
+          mapping.subspecialtyName
+        );
+
+        lists.push(list);
+        console.log(`      ✅ Generated ${list.totalCases} cases (Smart Mode - From Procedures Pool)`);
+        console.log(`      📊 Priority mix: ${selectedWaitingListProcs.map(p => p.priority).join(', ')}`);
+      }
+    }
+
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  console.log(`\n🎉 AUTO-SCHEDULER COMPLETE!`);
+  console.log(`   📊 Generated ${lists.length} theatre lists`);
+  console.log(`   📋 Total cases: ${lists.reduce((sum, l) => sum + l.totalCases, 0)}`);
+  console.log(`   ⏱️  Average utilization: ${(lists.reduce((sum, l) => sum + l.utilizationPercentage, 0) / lists.length).toFixed(1)}%`);
+
+  return lists;
+}
+
+/**
+ * Generate schedule for a single date (for on-demand generation)
+ */
+export async function generateScheduleForDate(
+  hospitalId: string,
+  date: Date
+): Promise<TheatreList[]> {
+  return generateScheduleFromConfig(hospitalId, date, date);
+}

@@ -1,0 +1,838 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Loader2, X, Save, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { getTheatres } from '@/lib/scheduling/theatreService';
+import { useHospital } from '@/lib/hospitalContext';
+
+interface Subspecialty {
+  name: string;
+  abbreviation: string;
+}
+
+interface Specialty {
+  id: string;
+  name: string;
+  abbreviation: string;
+  subspecialties?: Subspecialty[];
+}
+
+interface Theatre {
+  id: string;
+  name: string;
+  unitId: string;
+  unitName?: string;
+}
+
+interface TheatreMapping {
+  theatreId: string;
+  theatreName: string;
+  priority: number; // 1 = highest priority
+}
+
+interface SpecialtyMapping {
+  id: string;
+  specialtyId: string;
+  specialtyName: string;
+  subspecialtyName?: string; // Optional - for subspecialty-specific mappings
+  unitId: string;
+  unitName: string;
+  theatres: TheatreMapping[];
+}
+
+export default function SpecialtyTheatreMapping() {
+  const { currentHospital } = useHospital();
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
+  const [theatres, setTheatres] = useState<Theatre[]>([]);
+  const [mappings, setMappings] = useState<SpecialtyMapping[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingMapping, setEditingMapping] = useState<SpecialtyMapping | null>(null);
+  const [expandedMappings, setExpandedMappings] = useState<Set<string>>(new Set());
+  const [alertMessage, setAlertMessage] = useState<string>('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (currentHospital) {
+      loadData();
+    }
+  }, [currentHospital]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadSpecialties(),
+        loadUnits(),
+        loadTheatres(),
+        loadMappings()
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSpecialties = async () => {
+    if (!currentHospital) return;
+
+    try {
+      const q = query(collection(db, 'specialties'), where('hospitalId', '==', currentHospital.id));
+      const snapshot = await getDocs(q);
+      const loadedSpecialties: Specialty[] = [];
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        console.log(`Loading specialty ${doc.id}:`, data);
+        console.log(`  - Has subspecialties field:`, 'subspecialties' in data);
+        console.log(`  - Subspecialties value:`, data.subspecialties);
+
+        loadedSpecialties.push({
+          id: doc.id,
+          name: data.name,
+          abbreviation: data.abbreviation || data.name.substring(0, 6).toUpperCase(),
+          subspecialties: data.subspecialties || []
+        });
+      });
+
+      loadedSpecialties.sort((a, b) => a.name.localeCompare(b.name));
+      console.log('Final loaded specialties:', loadedSpecialties);
+      setSpecialties(loadedSpecialties);
+    } catch (error) {
+      console.error('Error loading specialties:', error);
+    }
+  };
+
+  const loadUnits = async () => {
+    if (!currentHospital) return;
+
+    try {
+      const q = query(collection(db, 'theatreUnits'), where('hospitalId', '==', currentHospital.id));
+      const snapshot = await getDocs(q);
+      const loadedUnits: any[] = [];
+
+      snapshot.forEach(doc => {
+        loadedUnits.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      loadedUnits.sort((a, b) => (a.order || 0) - (b.order || 0));
+      setUnits(loadedUnits);
+    } catch (error) {
+      console.error('Error loading units:', error);
+    }
+  };
+
+  const loadTheatres = async () => {
+    try {
+      const loadedTheatres = await getTheatres();
+      setTheatres(loadedTheatres);
+    } catch (error) {
+      console.error('Error loading theatres:', error);
+    }
+  };
+
+  const loadMappings = async () => {
+    if (!currentHospital) return;
+
+    try {
+      const q = query(collection(db, 'specialtyTheatreMappings'), where('hospitalId', '==', currentHospital.id));
+      const snapshot = await getDocs(q);
+      const loadedMappings: SpecialtyMapping[] = [];
+
+      snapshot.forEach(doc => {
+        loadedMappings.push({
+          id: doc.id,
+          ...doc.data()
+        } as SpecialtyMapping);
+      });
+
+      setMappings(loadedMappings);
+    } catch (error) {
+      console.error('Error loading mappings:', error);
+    }
+  };
+
+  const handleSave = async (mapping: SpecialtyMapping) => {
+    try {
+      console.log('=== SAVE STARTED ===');
+      console.log('Mapping to save:', mapping);
+
+      // Validate for duplicate priorities within the same theatre
+      const currentMappingId = mapping.id || `${mapping.specialtyId}-${mapping.unitId}`;
+      console.log('Current mapping ID:', currentMappingId);
+
+      for (const theatre of mapping.theatres) {
+        // Check all other mappings for this theatre
+        for (const existingMapping of mappings) {
+          // Skip if it's the same mapping we're editing
+          if (existingMapping.id === currentMappingId) continue;
+
+          // Check if this mapping has the same theatre with the same priority
+          const conflictingTheatre = existingMapping.theatres.find(
+            t => t.theatreId === theatre.theatreId && t.priority === theatre.priority
+          );
+
+          if (conflictingTheatre) {
+            console.log('VALIDATION FAILED: Priority conflict detected');
+            setAlertMessage(
+              `Priority ${theatre.priority} is already assigned to "${existingMapping.specialtyName}${
+                existingMapping.subspecialtyName ? ` (${existingMapping.subspecialtyName})` : ''
+              }" for theatre "${theatre.theatreName}".\n\nPlease choose a different priority.`
+            );
+            setShowAlert(true);
+            return; // Stop the save operation
+          }
+        }
+      }
+
+      console.log('Validation passed, saving to Firebase...');
+
+      if (!currentHospital) {
+        console.error('No current hospital selected');
+        setAlertMessage('No hospital selected. Please select a hospital first.');
+        setShowAlert(true);
+        return;
+      }
+
+      const docRef = doc(db, 'specialtyTheatreMappings', currentMappingId);
+      const saveData: any = {
+        hospitalId: currentHospital.id,
+        specialtyId: mapping.specialtyId,
+        specialtyName: mapping.specialtyName,
+        unitId: mapping.unitId,
+        unitName: mapping.unitName,
+        theatres: mapping.theatres
+      };
+
+      // Include subspecialtyName if it exists
+      if (mapping.subspecialtyName) {
+        saveData.subspecialtyName = mapping.subspecialtyName;
+      }
+
+      console.log('Save data:', saveData);
+      await setDoc(docRef, saveData);
+      console.log('Firebase save completed');
+
+      await loadMappings();
+      console.log('Mappings reloaded');
+
+      // Show success message
+      setSuccessMessage(`Mapping saved successfully! You can add another mapping or close this window.`);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 4000); // Hide after 4 seconds
+
+      // Keep modal open but clear the editing state so form can reset
+      console.log('Setting editingMapping to null to trigger form reset');
+      setEditingMapping(null);
+      console.log('=== SAVE COMPLETED ===');
+    } catch (error) {
+      console.error('Error saving mapping:', error);
+      setAlertMessage('Failed to save mapping');
+      setShowAlert(true);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this mapping?')) return;
+
+    try {
+      await deleteDoc(doc(db, 'specialtyTheatreMappings', id));
+      await loadMappings();
+    } catch (error) {
+      console.error('Error deleting mapping:', error);
+      setAlertMessage('Failed to delete mapping');
+      setShowAlert(true);
+    }
+  };
+
+  const toggleExpand = (id: string) => {
+    const newExpanded = new Set(expandedMappings);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedMappings(newExpanded);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <p className="text-xs md:text-sm text-gray-600">
+          Define which theatres each specialty typically uses. This helps TOM AI distribute cases efficiently and provides fallback when EPR data is unavailable.
+        </p>
+        <button
+          onClick={() => {
+            setEditingMapping(null);
+            setShowModal(true);
+          }}
+          className="px-3 md:px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-xs md:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <Plus className="w-3 h-3 md:w-4 md:h-4" />
+          Add Mapping
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
+          <p className="text-sm text-gray-500 mt-2">Loading mappings...</p>
+        </div>
+      ) : mappings.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 text-sm border border-gray-200 rounded-lg">
+          No specialty-theatre mappings configured. Click "Add Mapping" to create one.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {mappings.map((mapping) => (
+            <div
+              key={mapping.id}
+              className="border border-gray-300 rounded overflow-hidden"
+            >
+              {/* Collapsed Bar */}
+              <div
+                className="bg-white hover:bg-gray-50 transition-colors p-2 cursor-pointer"
+                onClick={() => toggleExpand(mapping.id)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  {/* Left side - Main info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="space-y-1">
+                      {/* Specialty name */}
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {mapping.specialtyName}
+                      </h3>
+                      {/* Subspecialty name below if exists */}
+                      {mapping.subspecialtyName && (
+                        <p className="text-xs text-teal-600 font-medium">
+                          {mapping.subspecialtyName}
+                        </p>
+                      )}
+                      {/* Stats badges */}
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <div className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200">
+                          <MapPin className="w-3 h-3" />
+                          <span className="text-[10px] font-medium">{mapping.unitName}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1 bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded border border-cyan-200">
+                          <span className="text-[10px] font-medium">
+                            {mapping.theatres.length} Theatre{mapping.theatres.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right side - Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingMapping(mapping);
+                        setShowModal(true);
+                      }}
+                      disabled={loading}
+                      className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded transition-colors disabled:opacity-50"
+                      title="Edit mapping"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    {expandedMappings.has(mapping.id) ? (
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded Section - Show Priorities in Grid */}
+              {expandedMappings.has(mapping.id) && (
+                <div className="bg-gray-50 border-t border-gray-200">
+                  <div className="p-3">
+                    <p className="text-xs font-medium text-gray-700 mb-3">Theatre Priorities:</p>
+
+                    {/* Priority Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {mapping.theatres
+                        .sort((a, b) => a.priority - b.priority)
+                        .map((theatre) => {
+                          // Color coding based on priority
+                          const priorityColors =
+                            theatre.priority === 1 ? 'bg-green-50 border-green-300 text-green-700' :
+                            theatre.priority === 2 ? 'bg-blue-50 border-blue-300 text-blue-700' :
+                            theatre.priority === 3 ? 'bg-yellow-50 border-yellow-300 text-yellow-700' :
+                            'bg-gray-50 border-gray-300 text-gray-700';
+
+                          return (
+                            <div
+                              key={theatre.theatreId}
+                              className={`p-2 border rounded ${priorityColors}`}
+                            >
+                              <div className="text-[10px] font-semibold uppercase tracking-wide mb-1">
+                                Priority {theatre.priority}
+                              </div>
+                              <p className="text-xs font-medium truncate" title={theatre.theatreName}>
+                                {theatre.theatreName}
+                              </p>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="p-3 bg-white border-t border-gray-200">
+                    <button
+                      onClick={() => handleDelete(mapping.id)}
+                      disabled={loading}
+                      className="p-2 text-sm font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                      title="Delete mapping"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <MappingModal
+          mapping={editingMapping}
+          specialties={specialties}
+          units={units}
+          theatres={theatres}
+          mappings={mappings}
+          showSuccess={showSuccess}
+          successMessage={successMessage}
+          onClose={() => {
+            setShowModal(false);
+            setEditingMapping(null);
+            setShowSuccess(false);
+          }}
+          onSave={handleSave}
+          onEdit={(mapping) => setEditingMapping(mapping)}
+          onModalOpen={() => loadTheatres()} // Reload theatres when modal opens
+        />
+      )}
+
+      {/* Custom Alert Modal */}
+      {showAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Priority Conflict</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line mb-6">{alertMessage}</p>
+            <button
+              onClick={() => setShowAlert(false)}
+              className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface MappingModalProps {
+  mapping: SpecialtyMapping | null;
+  specialties: Specialty[];
+  units: any[];
+  theatres: Theatre[];
+  mappings: SpecialtyMapping[];
+  showSuccess: boolean;
+  successMessage: string;
+  onClose: () => void;
+  onSave: (mapping: SpecialtyMapping) => Promise<void>;
+  onEdit: (mapping: SpecialtyMapping) => void;
+  onModalOpen: () => void;
+}
+
+function MappingModal({ mapping, specialties, units, theatres, mappings, showSuccess, successMessage, onClose, onSave, onEdit, onModalOpen }: MappingModalProps) {
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState(mapping?.specialtyId || '');
+  const [selectedSubspecialtyName, setSelectedSubspecialtyName] = useState(mapping?.subspecialtyName || '');
+  const [selectedUnitId, setSelectedUnitId] = useState(mapping?.unitId || '');
+  const [selectedTheatres, setSelectedTheatres] = useState<TheatreMapping[]>(mapping?.theatres || []);
+  const [saving, setSaving] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string>('');
+  const [showAlert, setShowAlert] = useState(false);
+
+  // Reload theatres when modal opens
+  useEffect(() => {
+    onModalOpen();
+  }, []);
+
+  // Reset form when mapping becomes null (after save)
+  useEffect(() => {
+    console.log('=== FORM RESET useEffect TRIGGERED ===');
+    console.log('mapping prop:', mapping);
+
+    if (!mapping) {
+      console.log('Mapping is null - CLEARING FORM');
+      setSelectedSpecialtyId('');
+      setSelectedSubspecialtyName('');
+      setSelectedUnitId('');
+      setSelectedTheatres([]);
+      console.log('Form cleared');
+    } else {
+      console.log('Mapping exists - LOADING INTO FORM');
+      console.log('Loading specialty:', mapping.specialtyId);
+      console.log('Loading subspecialty:', mapping.subspecialtyName);
+      console.log('Loading unit:', mapping.unitId);
+      console.log('Loading theatres:', mapping.theatres);
+
+      setSelectedSpecialtyId(mapping.specialtyId);
+      setSelectedSubspecialtyName(mapping.subspecialtyName || '');
+      setSelectedUnitId(mapping.unitId);
+      setSelectedTheatres(mapping.theatres);
+      console.log('Form loaded');
+    }
+    console.log('=== FORM RESET useEffect COMPLETED ===');
+  }, [mapping]);
+
+  // Get current specialty to show its subspecialties
+  const currentSpecialty = specialties.find(s => s.id === selectedSpecialtyId);
+  const hasSubspecialties = currentSpecialty?.subspecialties && currentSpecialty.subspecialties.length > 0;
+
+  // Debug logging
+  useEffect(() => {
+    console.log('=== SPECIALTY MAPPING DEBUG ===');
+    console.log('Total specialties loaded:', specialties.length);
+    console.log('Selected specialty ID:', selectedSpecialtyId);
+    console.log('Current specialty:', currentSpecialty);
+    console.log('Has subspecialties:', hasSubspecialties);
+    if (currentSpecialty?.subspecialties) {
+      console.log('Subspecialties:', currentSpecialty.subspecialties);
+    }
+    console.log('===============================');
+  }, [selectedSpecialtyId, specialties, currentSpecialty, hasSubspecialties]);
+
+  const unitTheatres = theatres.filter(t => t.unitId === selectedUnitId);
+
+  const toggleTheatre = (theatre: Theatre) => {
+    const existing = selectedTheatres.find(t => t.theatreId === theatre.id);
+    if (existing) {
+      setSelectedTheatres(selectedTheatres.filter(t => t.theatreId !== theatre.id));
+    } else {
+      const maxPriority = selectedTheatres.length > 0
+        ? Math.max(...selectedTheatres.map(t => t.priority))
+        : 0;
+      setSelectedTheatres([
+        ...selectedTheatres,
+        {
+          theatreId: theatre.id,
+          theatreName: theatre.name,
+          priority: maxPriority + 1
+        }
+      ]);
+    }
+  };
+
+  const updatePriority = (theatreId: string, newPriority: number) => {
+    setSelectedTheatres(
+      selectedTheatres.map(t =>
+        t.theatreId === theatreId ? { ...t, priority: newPriority } : t
+      )
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('=== FORM SUBMIT STARTED ===');
+    console.log('Selected specialty ID:', selectedSpecialtyId);
+    console.log('Selected unit ID:', selectedUnitId);
+    console.log('Selected theatres:', selectedTheatres);
+
+    if (!selectedSpecialtyId || !selectedUnitId || selectedTheatres.length === 0) {
+      console.log('VALIDATION FAILED: Missing required fields');
+      setAlertMessage('Please select a specialty, unit, and at least one theatre.');
+      setShowAlert(true);
+      return;
+    }
+
+    const specialty = specialties.find(s => s.id === selectedSpecialtyId);
+    const unit = units.find(u => u.id === selectedUnitId);
+
+    if (!specialty || !unit) {
+      console.log('ERROR: Could not find specialty or unit');
+      return;
+    }
+
+    // Create unique ID that includes subspecialty if selected
+    const idSuffix = selectedSubspecialtyName
+      ? `-${selectedSubspecialtyName.replace(/\s+/g, '-').toLowerCase()}`
+      : '';
+    const mappingId = mapping?.id || `${selectedSpecialtyId}-${selectedUnitId}${idSuffix}`;
+
+    const mappingData: SpecialtyMapping = {
+      id: mappingId,
+      specialtyId: selectedSpecialtyId,
+      specialtyName: specialty.name,
+      subspecialtyName: selectedSubspecialtyName || undefined,
+      unitId: selectedUnitId,
+      unitName: unit.name,
+      theatres: selectedTheatres
+    };
+
+    console.log('Mapping data to save:', mappingData);
+    console.log('Calling onSave...');
+
+    setSaving(true);
+    try {
+      await onSave(mappingData);
+      console.log('onSave completed');
+      // Form will reset automatically via useEffect when mapping becomes null
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+    } finally {
+      setSaving(false);
+      console.log('=== FORM SUBMIT COMPLETED ===');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {mapping ? 'Edit Mapping' : 'Add New Mapping'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Success Banner */}
+        {showSuccess && (
+          <div className="bg-green-50 border-l-4 border-green-500 px-6 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-green-800">{successMessage}</p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Specialty *
+            </label>
+            <select
+              required
+              value={selectedSpecialtyId}
+              onChange={(e) => {
+                setSelectedSpecialtyId(e.target.value);
+                setSelectedSubspecialtyName(''); // Reset subspecialty when changing specialty
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select a specialty</option>
+              {specialties.map(specialty => (
+                <option key={specialty.id} value={specialty.id}>
+                  {specialty.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subspecialty Selector - Only show if specialty has subspecialties */}
+          {selectedSpecialtyId && hasSubspecialties && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subspecialty <span className="text-gray-500 text-xs">(Optional - leave empty to map entire specialty)</span>
+              </label>
+              <select
+                value={selectedSubspecialtyName}
+                onChange={(e) => setSelectedSubspecialtyName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All {currentSpecialty?.name} (no specific subspecialty)</option>
+                {currentSpecialty?.subspecialties?.map(subspecialty => (
+                  <option key={subspecialty.name} value={subspecialty.name}>
+                    {subspecialty.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Select a specific subspecialty to map only that subspecialty to these theatres, or leave empty to map the entire specialty.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Theatre Unit *
+            </label>
+            <select
+              required
+              value={selectedUnitId}
+              onChange={(e) => {
+                setSelectedUnitId(e.target.value);
+                setSelectedTheatres([]);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select a unit</option>
+              {units.map(unit => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.name} ({unit.location})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Saved Configurations */}
+          {mappings.length > 0 && (
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Saved Configurations</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {mappings.map((savedMapping) => (
+                  <button
+                    key={savedMapping.id}
+                    type="button"
+                    onClick={() => {
+                      onEdit(savedMapping);
+                      setSelectedSpecialtyId(savedMapping.specialtyId);
+                      setSelectedSubspecialtyName(savedMapping.subspecialtyName || '');
+                      setSelectedUnitId(savedMapping.unitId);
+                      setSelectedTheatres(savedMapping.theatres);
+                    }}
+                    className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">
+                          {savedMapping.specialtyName}
+                          {savedMapping.subspecialtyName && (
+                            <span className="text-blue-600"> - {savedMapping.subspecialtyName}</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {savedMapping.unitName} • {savedMapping.theatres.length} theatre{savedMapping.theatres.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <Edit2 className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedUnitId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Theatres and Set Priorities *
+              </label>
+              {unitTheatres.length === 0 ? (
+                <div className="text-sm text-gray-500 p-3 border border-gray-200 rounded-lg">
+                  No theatres available in this unit. Please create theatres first.
+                </div>
+              ) : (
+                <div className="border border-gray-300 rounded-lg p-3 space-y-2">
+                  {unitTheatres.map(theatre => {
+                    const mapping = selectedTheatres.find(t => t.theatreId === theatre.id);
+                    const isSelected = !!mapping;
+
+                    return (
+                      <div
+                        key={theatre.id}
+                        className={`p-3 rounded-lg border-2 transition-colors ${
+                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-3 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleTheatre(theatre)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">{theatre.name}</span>
+                          </label>
+
+                          {isSelected && mapping && (
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-600">Priority:</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={mapping.priority}
+                                onChange={(e) => updatePriority(theatre.id, parseInt(e.target.value))}
+                                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                {selectedTheatres.length} theatre{selectedTheatres.length !== 1 ? 's' : ''} selected.
+                Priority 1 = highest (primary choice for this specialty).
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {mapping ? 'Update Mapping' : 'Create Mapping'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Custom Alert Modal */}
+      {showAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Validation Error</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line mb-6">{alertMessage}</p>
+            <button
+              onClick={() => setShowAlert(false)}
+              className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,134 @@
+{
+  "hospital": "Royal London Hospital",
+  "lastUpdated": "2025-01-02",
+  "version": "1.0",
+  "totalProcedures": 810,
+  "totalSpecialties": 14,
+  "description": "Comprehensive surgical procedures database for Royal London Hospital with OPCS-4 codes",
+  "instructions": "Edit this file to add/modify procedures. Each procedure needs: name, specialtyName, subspecialtyName (optional), opcs4 codes, and commonVariations",
+  "procedures": [
+    {
+      "name": "Laparotomy - Exploratory",
+      "specialtyName": "Emergency",
+      "opcs4": ["T421"],
+      "commonVariations": ["Ex-Lap", "Emergency Laparotomy"]
+    },
+    {
+      "name": "Appendicectomy - Emergency",
+      "specialtyName": "Emergency",
+      "opcs4": ["H011", "H012"],
+      "commonVariations": ["Emergency Appendicectomy"]
+    },
+    {
+      "name": "Laparotomy for Perforated Viscus",
+      "specialtyName": "Emergency",
+      "opcs4": ["T421", "G512"],
+      "commonVariations": ["Perforation Repair"]
+    }
+  ],
+  "template": {
+    "name": "Template Procedure Name",
+    "specialtyName": "Specialty Name (e.g., Emergency, General Surgery)",
+    "subspecialtyName": "Subspecialty Name (omit if none)",
+    "opcs4": ["CODE1", "CODE2"],
+    "commonVariations": ["Abbreviation", "Alternative Name"]
+  },
+  "specialtyStructure": {
+    "Emergency": {
+      "subspecialties": [],
+      "requiredProcedures": 30
+    },
+    "Endoscopy": {
+      "subspecialties": [
+        "Endoscopic Retrograde Cholangiopancreatography",
+        "Gastroscopy and Colonoscopy"
+      ],
+      "requiredProcedures": 60
+    },
+    "ENT": {
+      "subspecialties": [
+        "ENT Robotic",
+        "ENT Laser"
+      ],
+      "requiredProcedures": 60
+    },
+    "General Surgery": {
+      "subspecialties": [
+        "Upper Gastrointestinal",
+        "Hepatobiliary",
+        "Hyperthermic Intraperitoneal Chemotherapy",
+        "Colorectal"
+      ],
+      "requiredProcedures": 120
+    },
+    "Gynaecology": {
+      "subspecialties": [
+        "Gynae Robotic",
+        "Gynae Fertility"
+      ],
+      "requiredProcedures": 60
+    },
+    "Neurology": {
+      "subspecialties": [
+        "Neuro-Oncology"
+      ],
+      "requiredProcedures": 30
+    },
+    "Obstetrics": {
+      "subspecialties": [],
+      "requiredProcedures": 30
+    },
+    "Ophthalmology": {
+      "subspecialties": [],
+      "requiredProcedures": 30
+    },
+    "Oral and Maxillofacial": {
+      "subspecialties": [
+        "OMFS Trauma",
+        "OMFS Mandible",
+        "Orthognathic",
+        "Dental"
+      ],
+      "requiredProcedures": 120
+    },
+    "Orthopaedics": {
+      "subspecialties": [
+        "Elective Orthopaedic Joints",
+        "Orthopaedic Spine",
+        "Orthopaedic Trauma"
+      ],
+      "requiredProcedures": 90
+    },
+    "Plastics": {
+      "subspecialties": [
+        "Burns & Breast",
+        "Deep Inferior Epigastric Perforator"
+      ],
+      "requiredProcedures": 60
+    },
+    "Renal": {
+      "subspecialties": [
+        "Renal Transplant"
+      ],
+      "requiredProcedures": 30
+    },
+    "Urology": {
+      "subspecialties": [
+        "Urology Robotic",
+        "Urology Laser"
+      ],
+      "requiredProcedures": 60
+    },
+    "Vascular": {
+      "subspecialties": [],
+      "requiredProcedures": 30
+    }
+  },
+  "notes": [
+    "Total required procedures: 810 (30 per subspecialty or specialty if no subspecialties)",
+    "Current count: 3 (starter examples only)",
+    "To complete: Add 807 more procedures following the template above",
+    "OPCS-4 codes should be accurate NHS clinical procedure codes",
+    "Common variations should include abbreviations and alternative names used in practice"
+  ]
+}
