@@ -719,7 +719,6 @@ export default function TomAIChatPanel({ showHeader = true }: TomAIChatPanelProp
       utterance.onerror = (event) => {
         console.error('Speech error:', {
           error: event.error,
-          message: event.message || 'Speech synthesis failed',
           charIndex: event.charIndex
         });
         isSpeakingRef.current = false;
