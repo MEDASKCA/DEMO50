@@ -64,14 +64,18 @@ export default function CinematicAutoPlay() {
     setIsSpeaking(true);
 
     try {
+      console.log('🎙️ Calling OpenAI TTS with fable voice...');
       const response = await fetch('/api/openai-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: 'fable' }),
       });
 
+      console.log('📡 TTS Response:', response.status, response.statusText);
+
       if (response.ok) {
         const contentType = response.headers.get('content-type');
+        console.log('📦 Content type:', contentType);
 
         if (contentType?.includes('audio/mpeg')) {
           const audioBlob = await response.blob();
@@ -79,21 +83,57 @@ export default function CinematicAutoPlay() {
           const audio = new Audio(audioUrl);
 
           audio.onended = () => {
+            console.log('✅ Audio finished playing');
             setIsSpeaking(false);
             URL.revokeObjectURL(audioUrl);
           };
 
+          audio.onerror = (e) => {
+            console.error('❌ Audio playback error:', e);
+            setIsSpeaking(false);
+            useBrowserVoice(text);
+          };
+
+          console.log('▶️ Playing audio...');
           await audio.play();
         } else {
           // Fallback to browser voice
-          console.log('Falling back to browser voice');
-          setIsSpeaking(false);
+          console.log('⚠️ Not audio/mpeg, falling back to browser voice');
+          useBrowserVoice(text);
         }
+      } else {
+        console.error('❌ TTS API error:', response.status);
+        useBrowserVoice(text);
       }
     } catch (error) {
-      console.error('TTS error:', error);
-      setIsSpeaking(false);
+      console.error('❌ TTS error:', error);
+      useBrowserVoice(text);
     }
+  };
+
+  const useBrowserVoice = (text: string) => {
+    console.log('🔊 Using browser voice as fallback');
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.85;
+    utterance.pitch = 0.9;
+    utterance.volume = 1.0;
+
+    // Try to use British voice
+    const voices = speechSynthesis.getVoices();
+    const britishVoice = voices.find(v =>
+      v.lang.includes('en-GB') || v.name.includes('British') || v.name.includes('Daniel')
+    );
+    if (britishVoice) utterance.voice = britishVoice;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    speechSynthesis.speak(utterance);
   };
 
   const playSection = async (index: number) => {
@@ -165,10 +205,8 @@ export default function CinematicAutoPlay() {
             transition={{ duration: 1 }}
           >
             {/* MEDASKCA Logo */}
-            <motion.img
-              src="https://raw.githubusercontent.com/MEDASKCA/OPS/main/logo-medaskca.png"
-              alt="MEDASKCA"
-              className="w-48 h-48 mx-auto mb-8"
+            <motion.div
+              className="w-48 h-48 mx-auto mb-8 rounded-full overflow-hidden"
               animate={{
                 boxShadow: [
                   '0 0 20px rgba(20, 184, 166, 0.3)',
@@ -177,7 +215,15 @@ export default function CinematicAutoPlay() {
                 ],
               }}
               transition={{ duration: 2, repeat: Infinity }}
-            />
+              style={{ background: 'black' }}
+            >
+              <img
+                src="https://raw.githubusercontent.com/MEDASKCA/OPS/main/logo-medaskca.png"
+                alt="MEDASKCA"
+                className="w-full h-full object-cover"
+                style={{ mixBlendMode: 'screen' }}
+              />
+            </motion.div>
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
               Welcome to the Future
             </h1>
@@ -298,14 +344,20 @@ export default function CinematicAutoPlay() {
                 transition={{ duration: 0.8 }}
                 className="mb-12"
               >
-                <img
-                  src="https://raw.githubusercontent.com/MEDASKCA/OPS/main/logo-medaskca.png"
-                  alt="MEDASKCA"
-                  className="w-64 h-64 mx-auto"
+                <div
+                  className="w-64 h-64 mx-auto rounded-full overflow-hidden"
                   style={{
+                    background: 'black',
                     filter: isSpeaking ? 'drop-shadow(0 0 60px rgba(20, 184, 166, 0.8))' : 'drop-shadow(0 0 30px rgba(20, 184, 166, 0.4))',
                   }}
-                />
+                >
+                  <img
+                    src="https://raw.githubusercontent.com/MEDASKCA/OPS/main/logo-medaskca.png"
+                    alt="MEDASKCA"
+                    className="w-full h-full object-cover"
+                    style={{ mixBlendMode: 'screen' }}
+                  />
+                </div>
                 <h1 className="text-7xl md:text-9xl font-black bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 bg-clip-text text-transparent mt-8">
                   TOM
                 </h1>
