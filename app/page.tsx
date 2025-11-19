@@ -25,7 +25,9 @@ export default function CinematicAutoPlay() {
   const [selectedVoice, setSelectedVoice] = useState<VoiceId>('fable');
   const [showSettings, setShowSettings] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [backgroundMusicVolume, setBackgroundMusicVolume] = useState(0.25); // 25% volume
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioCacheRef = useRef<Map<number, string>>(new Map());
 
@@ -56,6 +58,67 @@ export default function CinematicAutoPlay() {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
+
+  // Initialize background music
+  useEffect(() => {
+    // Create background music element
+    const music = new Audio('https://cdn.pixabay.com/download/audio/2022/05/13/audio_1808fbf07a.mp3'); // Cinematic ambient track
+    music.loop = true;
+    music.volume = 0; // Start silent for fade in
+    backgroundMusicRef.current = music;
+
+    return () => {
+      if (backgroundMusicRef.current) {
+        backgroundMusicRef.current.pause();
+        backgroundMusicRef.current = null;
+      }
+    };
+  }, []);
+
+  // Fade in background music when experience starts
+  const fadeInBackgroundMusic = () => {
+    if (!backgroundMusicRef.current) return;
+
+    backgroundMusicRef.current.play().catch(console.error);
+
+    // Gradual fade in over 2 seconds
+    let volume = 0;
+    const fadeInterval = setInterval(() => {
+      if (!backgroundMusicRef.current) {
+        clearInterval(fadeInterval);
+        return;
+      }
+      volume += 0.05;
+      if (volume >= backgroundMusicVolume) {
+        backgroundMusicRef.current.volume = backgroundMusicVolume;
+        clearInterval(fadeInterval);
+      } else {
+        backgroundMusicRef.current.volume = volume;
+      }
+    }, 100);
+  };
+
+  // Fade out background music
+  const fadeOutBackgroundMusic = () => {
+    if (!backgroundMusicRef.current) return;
+
+    const currentVolume = backgroundMusicRef.current.volume;
+    let volume = currentVolume;
+    const fadeInterval = setInterval(() => {
+      if (!backgroundMusicRef.current) {
+        clearInterval(fadeInterval);
+        return;
+      }
+      volume -= 0.05;
+      if (volume <= 0) {
+        backgroundMusicRef.current.volume = 0;
+        backgroundMusicRef.current.pause();
+        clearInterval(fadeInterval);
+      } else {
+        backgroundMusicRef.current.volume = volume;
+      }
+    }, 100);
+  };
 
   // TOM's comprehensive cinematic narration - British wit & professional humor
   const sections = [
@@ -322,6 +385,9 @@ export default function CinematicAutoPlay() {
   const startExperience = async () => {
     setIsInitializing(true);
     setIsPlaying(true);
+
+    // Start background music with fade in
+    fadeInBackgroundMusic();
 
     if (useVoice) {
       await preloadAudio(0);
