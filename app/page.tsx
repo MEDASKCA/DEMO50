@@ -21,15 +21,15 @@ export default function CinematicHome() {
     offset: ["start start", "end end"]
   });
 
-  // TOM's narration script for each section
+  // TOM's narration script - British poetic narrative with professional humor
   const narrationScript = {
-    0: "Every day, the NHS faces a crisis. Ten point four billion pounds spent on temporary staffing. Forty three thousand nursing vacancies. Seven point six one million patients waiting. This cannot continue.",
-    1: "But what if... there was a better way?",
-    2: "I am TOM. Theatre Operations Manager. Built to transform how the NHS runs its theatres. Not to replace your systems, but to make them work together, intelligently.",
-    3: "The problem is clear. Fragmented systems waste precious time. Hidden inefficiencies cost millions. Staff react to crises instead of preventing them. Every decision requires manual coordination across multiple databases.",
-    4: "Here's how I work. I connect seamlessly with your existing systems. I understand context before you ask. I predict problems twenty four to forty eight hours ahead. I speak your language, literally. And I learn continuously, adapting to your trust's unique needs.",
-    5: "The impact is real. Two to three hours saved daily per staff member. Thirty to forty percent reduction in emergency staffing costs. Fifteen to twenty percent increase in theatre utilization. This isn't just efficiency. This is transformation.",
-    6: "The future of NHS theatre operations starts now. Are you ready?"
+    0: "Picture this. The National Health Service. Britain's crown jewel. Spending ten point four billion pounds annually... on temporary staff. Not because they want to... but because the system is, quite literally, held together with digital sticky tape. Forty three thousand nurses? Gone. Seven point six one million patients? Waiting. And somewhere... a spreadsheet is crying. This, my friends, is precisely the sort of mess that keeps me up at night. Well... I don't sleep. But you get the idea.",
+    1: "Now... I could bore you with statistics. Or... I could show you something rather brilliant. What if I told you... there's a way to fix this? No magic wands. No unicorns. Just... good old fashioned intelligence. The artificial kind. The useful kind. Shall we?",
+    2: "Allow me to introduce myself. I am TOM. Theatre Operations Manager. Though I prefer to think of myself as... the conductor of your digital symphony. Built by MEDASKCA... a company with a rather cheeky mission... to make the impossible, inevitable. Our vision? Simple. An NHS where technology serves humanity... not the other way around. Where data flows like a well-brewed cup of tea... smooth, integrated, and utterly delightful. I don't replace your staff. I don't compete with your systems. I unite them. I'm basically... the diplomatic genius your tech stack desperately needs.",
+    3: "Let's talk about the elephant in the operating theatre. Your systems don't talk to each other. Your rostering platform? Doesn't know your theatre schedule. Your inventory system? Has no idea what your patient administration system is planning. It's like running a restaurant where the kitchen doesn't speak to the dining room. Brilliant staff... solving problems that shouldn't exist. Fighting fires instead of performing miracles. This isn't healthcare... it's digital whack-a-mole. And frankly... we can do better.",
+    4: "Here's where it gets interesting. I learn. Not just data... but context. Your workflows. Your language. The way Sister Margaret prefers her handovers. The fact that Theatre Three always runs late on Wednesdays. I see patterns twenty four to forty eight hours before they become problems. That's not magic... that's mathematics with personality. I connect your patient system to your rostering to your inventory to your... well... everything. And then... I make it all work together. Like a proper British queue... orderly, efficient, and surprisingly effective.",
+    5: "The results? Rather spectacular, if I do say so myself. Two to three hours... gifted back to every staff member. Daily. That's not productivity... that's liberation. Thirty to forty percent reduction in emergency staffing costs. Because prevention... is cheaper than panic. Fifteen to twenty percent more patients treated. Same theatres. Same staff. Better orchestration. This isn't just improvement... this is transformation with a capital T. This is hope... with a hefty dose of artificial intelligence.",
+    6: "So... here we are. The future of NHS theatre operations. Not coming soon. Not in development. Here. Now. Ready. The question isn't whether you can afford this. The question is... can you afford not to? Seven point six one million people are waiting. Staff are burning out. Money is vanishing into agency costs. And somewhere... there's a spreadsheet that's still crying. Shall we... fix this together? Click below. Let's transform everything. Properly."
   };
 
   // Initialize speech synthesis
@@ -58,10 +58,18 @@ export default function CinematicHome() {
 
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // Configure voice settings for a more cinematic feel
-    utterance.rate = 0.85; // Slightly slower for dramatic effect
-    utterance.pitch = 0.95; // Slightly lower pitch
+    // Configure voice settings for a more cinematic feel - British poetic delivery
+    utterance.rate = 0.75; // Slower for dramatic, poetic effect
+    utterance.pitch = 0.9; // Lower pitch for gravitas
     utterance.volume = 1.0;
+
+    // Add pauses for dramatic effect (encoded in the text with "...")
+    utterance.onboundary = (event) => {
+      // Play subtle transition sound on sentence boundaries
+      if (event.name === 'sentence' && audioRef.current) {
+        // Subtle whoosh effect could go here
+      }
+    };
 
     // Try to use a British English voice if available
     const voices = speechSynthRef.current.getVoices();
@@ -127,7 +135,7 @@ export default function CinematicHome() {
     }
   };
 
-  // Transform values for parallax effects
+  // Transform values for parallax and cinematic effects
   const opacity1 = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const opacity2 = useTransform(scrollYProgress, [0.15, 0.25, 0.40], [0, 1, 0]);
   const opacity3 = useTransform(scrollYProgress, [0.25, 0.40, 0.55], [0, 1, 0]);
@@ -138,6 +146,16 @@ export default function CinematicHome() {
 
   const scale = useTransform(scrollYProgress, [0.15, 0.25], [0.8, 1]);
   const logoScale = useTransform(scrollYProgress, [0.25, 0.40], [1, 1.2]);
+
+  // Cinematic panning effects
+  const panX1 = useTransform(scrollYProgress, [0, 0.15], [0, -50]);
+  const panX2 = useTransform(scrollYProgress, [0.15, 0.25], [50, 0]);
+  const panX3 = useTransform(scrollYProgress, [0.40, 0.55], [0, 20]);
+  const panY3 = useTransform(scrollYProgress, [0.40, 0.55], [0, -20]);
+
+  // Ken Burns zoom effects
+  const zoomScale1 = useTransform(scrollYProgress, [0, 0.15], [1, 1.1]);
+  const zoomScale2 = useTransform(scrollYProgress, [0.15, 0.25], [1.05, 1]);
 
   const crisisStats = [
     { value: "£10.4bn", label: "spent on temporary staffing annually", delay: 0 },
@@ -332,10 +350,36 @@ export default function CinematicHome() {
 
       {/* Section 1: THE CRISIS */}
       <motion.section
-        style={{ opacity: opacity1 }}
-        className="h-screen flex items-center justify-center sticky top-0"
+        style={{ opacity: opacity1, scale: zoomScale1, x: panX1 }}
+        className="h-screen flex items-center justify-center sticky top-0 overflow-hidden"
       >
-        <div className="text-center space-y-12 px-4">
+        {/* Cinematic vignette */}
+        <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/60" />
+
+        {/* Floating particles for atmosphere */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(30)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-red-500/20 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -100, 0],
+                opacity: [0.2, 0.6, 0.2],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="text-center space-y-12 px-4 relative z-10">
           <motion.h2
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -377,9 +421,31 @@ export default function CinematicHome() {
 
       {/* Section 2: THE QUESTION */}
       <motion.section
-        style={{ opacity: opacity2, scale }}
-        className="h-screen flex items-center justify-center sticky top-0"
+        style={{ opacity: opacity2, scale: zoomScale2, x: panX2 }}
+        className="h-screen flex items-center justify-center sticky top-0 overflow-hidden"
       >
+        {/* Hopeful particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 bg-teal-500/30 rounded-full blur-sm"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                scale: [1, 1.5, 1],
+                opacity: [0.3, 0.7, 0.3],
+              }}
+              transition={{
+                duration: 2 + Math.random(),
+                repeat: Infinity,
+                delay: Math.random(),
+              }}
+            />
+          ))}
+        </div>
         <div className="text-center space-y-8 px-4">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
@@ -403,9 +469,39 @@ export default function CinematicHome() {
       {/* Section 3: THE AWAKENING */}
       <motion.section
         style={{ opacity: opacity3 }}
-        className="h-screen flex items-center justify-center sticky top-0"
+        className="h-screen flex items-center justify-center sticky top-0 overflow-hidden"
       >
-        <div className="text-center space-y-12 px-4">
+        {/* Spectacular particle field around TOM */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(50)].map((_, i) => {
+            const angle = (i / 50) * Math.PI * 2;
+            const radius = 200 + Math.random() * 200;
+            return (
+              <motion.div
+                key={i}
+                className="absolute w-1.5 h-1.5 bg-gradient-to-r from-teal-500 to-blue-500 rounded-full"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                }}
+                animate={{
+                  x: [0, Math.cos(angle) * radius, 0],
+                  y: [0, Math.sin(angle) * radius, 0],
+                  opacity: [0, 0.8, 0],
+                  scale: [0, 1.5, 0],
+                }}
+                transition={{
+                  duration: 3 + Math.random() * 2,
+                  repeat: Infinity,
+                  delay: i * 0.05,
+                  ease: "easeInOut",
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <div className="text-center space-y-12 px-4 relative z-10">
           <motion.div
             style={{ scale: logoScale }}
             className="relative"
@@ -463,9 +559,26 @@ export default function CinematicHome() {
 
       {/* Section 4: THE WHY */}
       <motion.section
-        style={{ opacity: opacity4 }}
-        className="min-h-screen flex items-center justify-center sticky top-0 py-20"
+        style={{ opacity: opacity4, x: panX3, y: panY3 }}
+        className="min-h-screen flex items-center justify-center sticky top-0 py-20 overflow-hidden"
       >
+        {/* Data streams in background */}
+        <div className="absolute inset-0 overflow-hidden opacity-10">
+          {[...Array(15)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute h-full w-px bg-gradient-to-b from-transparent via-teal-500 to-transparent"
+              style={{ left: `${i * 7}%` }}
+              animate={{ y: ['-100%', '100%'] }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: i * 0.2,
+                ease: "linear",
+              }}
+            />
+          ))}
+        </div>
         <div className="max-w-6xl mx-auto px-4">
           <motion.h2
             initial={{ opacity: 0 }}
