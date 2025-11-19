@@ -3,21 +3,21 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Allow access to login page and API routes
-  if (pathname.startsWith('/login') || pathname.startsWith('/api/')) {
+
+  // Allow access to login page, terms page, and API routes
+  if (pathname.startsWith('/login') || pathname.startsWith('/terms') || pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
-  
+
   // Check if user is authenticated
   const isAuthenticated = request.cookies.get('tom_intro_authenticated')?.value === 'true';
-  
+
   if (!isAuthenticated) {
     // Redirect to login
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
-  
+
   return NextResponse.next();
 }
 
