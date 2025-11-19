@@ -24,6 +24,7 @@ export default function CinematicAutoPlay() {
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceId>('fable');
   const [showSettings, setShowSettings] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioCacheRef = useRef<Map<number, string>>(new Map());
@@ -319,10 +320,17 @@ export default function CinematicAutoPlay() {
   };
 
   const startExperience = async () => {
+    setIsInitializing(true);
     setIsPlaying(true);
+
     if (useVoice) {
       await preloadAudio(0);
     }
+
+    // Small delay to show loading state
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsInitializing(false);
+
     playSection(0);
   };
 
@@ -441,12 +449,29 @@ export default function CinematicAutoPlay() {
 
             <motion.button
               onClick={startExperience}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 sm:px-10 md:px-12 py-4 sm:py-5 md:py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-base sm:text-lg md:text-xl shadow-2xl hover:shadow-teal-500/50 transition-all flex items-center gap-2 sm:gap-3 mx-auto"
+              disabled={isInitializing}
+              whileHover={!isInitializing ? { scale: 1.05 } : {}}
+              whileTap={!isInitializing ? { scale: 0.95 } : {}}
+              className={`px-8 sm:px-10 md:px-12 py-4 sm:py-5 md:py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-base sm:text-lg md:text-xl shadow-2xl hover:shadow-teal-500/50 transition-all flex items-center gap-2 sm:gap-3 mx-auto ${
+                isInitializing ? 'opacity-80 cursor-not-allowed' : ''
+              }`}
             >
-              <Play className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>Begin Experience</span>
+              {isInitializing ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </motion.div>
+                  <span>Preparing TOM's Voice...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span>Begin Experience</span>
+                </>
+              )}
             </motion.button>
 
             <p className="text-gray-500 text-xs sm:text-sm px-4">
