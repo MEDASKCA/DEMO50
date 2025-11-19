@@ -663,6 +663,189 @@ export default function CinematicAutoPlay() {
               </motion.div>
             )}
 
+            {/* Crisis Visual - Explainer Style */}
+            {section.visual === "crisis" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="mb-8 max-w-4xl mx-auto"
+              >
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Money flying away animation */}
+                  <motion.div
+                    animate={{
+                      y: [-10, 10, -10],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    className="bg-red-500/10 border-2 border-red-500 rounded-xl p-6 text-center"
+                  >
+                    <motion.div
+                      className="text-5xl mb-2"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      💸
+                    </motion.div>
+                    <div className="text-2xl font-bold text-red-400">£10.4B</div>
+                    <div className="text-sm text-gray-400 mt-1">Temp Staffing</div>
+                  </motion.div>
+
+                  {/* Nurses leaving */}
+                  <motion.div
+                    className="bg-orange-500/10 border-2 border-orange-500 rounded-xl p-6 text-center"
+                  >
+                    <motion.div
+                      className="text-5xl mb-2"
+                      animate={{ x: [0, 20, 0] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                    >
+                      👨‍⚕️
+                    </motion.div>
+                    <div className="text-2xl font-bold text-orange-400">43,000</div>
+                    <div className="text-sm text-gray-400 mt-1">Vacancies</div>
+                  </motion.div>
+
+                  {/* Patients waiting */}
+                  <motion.div
+                    className="bg-yellow-500/10 border-2 border-yellow-500 rounded-xl p-6 text-center"
+                  >
+                    <motion.div
+                      className="text-5xl mb-2"
+                      animate={{ rotate: [0, -10, 10, 0] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    >
+                      ⏳
+                    </motion.div>
+                    <div className="text-2xl font-bold text-yellow-400">7.61M</div>
+                    <div className="text-sm text-gray-400 mt-1">Waiting</div>
+                  </motion.div>
+                </div>
+
+                {/* Crying spreadsheet */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.5 }}
+                  className="mt-6 text-center"
+                >
+                  <motion.div
+                    className="text-6xl inline-block"
+                    animate={{
+                      y: [0, -5, 0]
+                    }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    📊😭
+                  </motion.div>
+                  <p className="text-gray-400 mt-2">...and somewhere, a spreadsheet is crying</p>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Diagnosis Visual - Disconnected Systems */}
+            {section.visual === "why" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mb-8 max-w-4xl mx-auto"
+              >
+                <div className="grid grid-cols-3 gap-4 relative">
+                  {/* System 1 - Rostering */}
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5 }}
+                    className="bg-purple-500/10 border-2 border-purple-500 rounded-lg p-4 text-center"
+                  >
+                    <div className="text-3xl mb-2">📅</div>
+                    <div className="text-sm text-purple-300">Rostering</div>
+                  </motion.div>
+
+                  {/* System 2 - Theatre Schedule */}
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 0.7 }}
+                    className="bg-blue-500/10 border-2 border-blue-500 rounded-lg p-4 text-center"
+                  >
+                    <div className="text-3xl mb-2">🏥</div>
+                    <div className="text-sm text-blue-300">Theatre</div>
+                  </motion.div>
+
+                  {/* System 3 - Inventory */}
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 1.4 }}
+                    className="bg-green-500/10 border-2 border-green-500 rounded-lg p-4 text-center"
+                  >
+                    <div className="text-3xl mb-2">📦</div>
+                    <div className="text-sm text-green-300">Inventory</div>
+                  </motion.div>
+
+                  {/* Broken connections */}
+                  <motion.div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                  >
+                    <div className="text-6xl opacity-30">❌</div>
+                  </motion.div>
+                </div>
+                <p className="text-center text-red-400 mt-4">Systems don't talk to each other!</p>
+              </motion.div>
+            )}
+
+            {/* Solution Visual - Connected Systems */}
+            {section.visual === "how" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mb-8 max-w-4xl mx-auto"
+              >
+                {/* TOM in the center connecting everything */}
+                <div className="relative">
+                  <div className="grid grid-cols-3 gap-4">
+                    {['📅', '🏥', '📦', '👥', '📊', '💬'].map((icon, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.5 + i * 0.2 }}
+                        className="bg-teal-500/10 border-2 border-teal-500 rounded-lg p-4 text-center relative"
+                      >
+                        <div className="text-3xl">{icon}</div>
+                        {/* Connection lines to center */}
+                        <motion.div
+                          className="absolute top-1/2 left-1/2 w-1 bg-teal-500"
+                          style={{
+                            height: '60px',
+                            transformOrigin: 'top',
+                            transform: `rotate(${60 * i}deg)`,
+                          }}
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: 1 }}
+                          transition={{ delay: 1 + i * 0.1 }}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* TOM logo in center */}
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 1.5, duration: 0.8, type: 'spring' }}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black rounded-full p-6 border-4 border-teal-500"
+                  >
+                    <div className="text-4xl font-bold text-teal-400">TOM</div>
+                  </motion.div>
+                </div>
+                <p className="text-center text-teal-400 mt-6">Everything connected. Everything working together.</p>
+              </motion.div>
+            )}
+
             {/* Six Pillars */}
             {section.visual === "pillars" && section.content && (
               <motion.div
