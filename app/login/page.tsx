@@ -70,10 +70,11 @@ export default function LoginPage() {
               </div>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
-              TOM by MEDASKCA
+              MEDASKCA
             </h1>
-            <p className="text-sm text-gray-400">Cinematic Experience</p>
-            <p className="text-xs mt-1 text-gray-500">Enter your credentials to continue</p>
+            <p className="text-sm text-gray-400">Healthcare Operations Platform</p>
+            <p className="text-xs mt-1 text-gray-500">Intelligent operations management for NHS trusts</p>
+            <p className="text-xs mt-1 text-gray-500">Featuring TOM - Theatre Operations Manager</p>
           </div>
 
           {/* Error Message */}
@@ -147,8 +148,20 @@ export default function LoginPage() {
                 background: 'linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%)'
               }}
             >
-              {loading ? 'Authenticating...' : 'Access Cinematic Experience'}
+              {loading ? 'Authenticating...' : 'Sign In'}
             </button>
+
+            {/* NDA Notice */}
+            <p className="text-center text-xs text-gray-500">
+              By signing in, you agree to our{' '}
+              <button
+                type="button"
+                onClick={() => router.push('/terms')}
+                className="font-medium underline text-cyan-400 hover:text-cyan-300"
+              >
+                Non-Disclosure Agreement
+              </button>
+            </p>
           </form>
         </div>
 
