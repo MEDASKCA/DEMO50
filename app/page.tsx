@@ -9,8 +9,10 @@ export default function CinematicAutoPlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [useVoice, setUseVoice] = useState(true);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCacheRef = useRef<Map<number, string>>(new Map());
 
   // TOM's cinematic narration - British wit & professional humor
   const sections = [
@@ -58,55 +60,97 @@ export default function CinematicAutoPlay() {
     }
   ];
 
-  const speakWithTOM = async (text: string) => {
-    if (!useVoice) return;
-
-    setIsSpeaking(true);
+  const preloadAudio = async (index: number) => {
+    if (!useVoice || audioCacheRef.current.has(index)) return;
 
     try {
-      console.log('🎙️ Calling OpenAI TTS with fable voice...');
+      const text = sections[index].narration;
       const response = await fetch('/api/openai-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: 'fable' }),
       });
 
-      console.log('📡 TTS Response:', response.status, response.statusText);
+      if (response.ok && response.headers.get('content-type')?.includes('audio/mpeg')) {
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        audioCacheRef.current.set(index, audioUrl);
+        console.log(`✅ Preloaded audio for section ${index}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to preload audio for section ${index}:`, error);
+    }
+  };
 
-      if (response.ok) {
-        const contentType = response.headers.get('content-type');
-        console.log('📦 Content type:', contentType);
+  const speakWithTOM = async (text: string, sectionIndex: number) => {
+    if (!useVoice) return;
 
-        if (contentType?.includes('audio/mpeg')) {
-          const audioBlob = await response.blob();
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioUrl);
+    setIsSpeaking(true);
+    setIsLoadingAudio(true);
 
-          audio.onended = () => {
-            console.log('✅ Audio finished playing');
-            setIsSpeaking(false);
-            URL.revokeObjectURL(audioUrl);
-          };
+    try {
+      let audioUrl = audioCacheRef.current.get(sectionIndex);
 
-          audio.onerror = (e) => {
-            console.error('❌ Audio playback error:', e);
-            setIsSpeaking(false);
+      if (!audioUrl) {
+        console.log('🎙️ Generating audio with OpenAI TTS...');
+        const response = await fetch('/api/openai-tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voice: 'fable' }),
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+
+          if (contentType?.includes('audio/mpeg')) {
+            const audioBlob = await response.blob();
+            audioUrl = URL.createObjectURL(audioBlob);
+            audioCacheRef.current.set(sectionIndex, audioUrl);
+          } else {
+            console.log('⚠️ Not audio/mpeg, falling back to browser voice');
+            setIsLoadingAudio(false);
             useBrowserVoice(text);
-          };
-
-          console.log('▶️ Playing audio...');
-          await audio.play();
+            return;
+          }
         } else {
-          // Fallback to browser voice
-          console.log('⚠️ Not audio/mpeg, falling back to browser voice');
+          console.error('❌ TTS API error:', response.status);
+          setIsLoadingAudio(false);
           useBrowserVoice(text);
+          return;
         }
       } else {
-        console.error('❌ TTS API error:', response.status);
+        console.log('✅ Using cached audio');
+      }
+
+      const audio = new Audio(audioUrl);
+
+      audio.onloadeddata = () => {
+        setIsLoadingAudio(false);
+      };
+
+      audio.onended = () => {
+        console.log('✅ Audio finished playing');
+        setIsSpeaking(false);
+      };
+
+      audio.onerror = (e) => {
+        console.error('❌ Audio playback error:', e);
+        setIsSpeaking(false);
+        setIsLoadingAudio(false);
         useBrowserVoice(text);
+      };
+
+      console.log('▶️ Playing audio...');
+      await audio.play();
+      setIsLoadingAudio(false);
+
+      // Preload next section while current is playing
+      if (sectionIndex + 1 < sections.length) {
+        preloadAudio(sectionIndex + 1);
       }
     } catch (error) {
       console.error('❌ TTS error:', error);
+      setIsLoadingAudio(false);
       useBrowserVoice(text);
     }
   };
@@ -143,7 +187,7 @@ export default function CinematicAutoPlay() {
     }
 
     setCurrentSection(index);
-    await speakWithTOM(sections[index].narration);
+    await speakWithTOM(sections[index].narration, index);
 
     // Auto-advance to next section
     timeoutRef.current = setTimeout(() => {
@@ -151,8 +195,12 @@ export default function CinematicAutoPlay() {
     }, sections[index].duration);
   };
 
-  const startExperience = () => {
+  const startExperience = async () => {
     setIsPlaying(true);
+    // Preload first section before starting
+    if (useVoice) {
+      await preloadAudio(0);
+    }
     playSection(0);
   };
 
@@ -298,9 +346,28 @@ export default function CinematicAutoPlay() {
         ))}
       </div>
 
+      {/* Loading audio indicator */}
+      <AnimatePresence>
+        {isLoadingAudio && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-blue-500/20 backdrop-blur-xl border border-blue-500/30 flex items-center gap-2 sm:gap-3"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-blue-500 border-t-transparent rounded-full"
+            />
+            <span className="text-blue-300 font-medium text-xs sm:text-sm md:text-base">Preparing audio...</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Speaking indicator */}
       <AnimatePresence>
-        {isSpeaking && (
+        {isSpeaking && !isLoadingAudio && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
