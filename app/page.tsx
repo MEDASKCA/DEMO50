@@ -30,7 +30,7 @@ export default function CinematicAutoPlay() {
     },
     {
       title: "MEET TOM",
-      narration: "Allow me to introduce myself. I am TOM. Theatre Operations Manager. Though I prefer to think of myself as the conductor of your digital symphony. Built by MEDASKCA, a company with a rather cheeky mission to make the impossible, inevitable. Our vision? Simple. An NHS where technology serves humanity, not the other way around. Where data flows like a well-brewed cup of tea. Smooth, integrated, and utterly delightful. I don't replace your staff. I don't compete with your systems. I unite them. I'm basically the diplomatic genius your tech stack desperately needs.",
+      narration: "Allow me to introduce myself. I am TOM. Theatre Operations Manager. Though I prefer to think of myself as the conductor of your digital symphony. Built by MEDAS-KA, a company with a rather cheeky mission to make the impossible, inevitable. Our vision? Simple. An NHS where technology serves humanity, not the other way around. Where data flows like a well-brewed cup of tea. Smooth, integrated, and utterly delightful. I don't replace your staff. I don't compete with your systems. I unite them. I'm basically the diplomatic genius your tech stack desperately needs.",
       duration: 40000,
       visual: "awakening"
     },
