@@ -7,10 +7,11 @@ export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
 
-    // Secure credentials for TOM cinematic intro
+    // Demo credentials - require approval for access
     const validCredentials = [
-      { username: 'medaskca', password: 'TOM#Cinematic2025!NHS' },
-      { username: 'nhscep', password: 'Theatre#Demo2025!Secure' }
+      { username: 'demo', password: 'nhscep2025' },
+      { username: 'admin', password: 'medaskca2025' },
+      { username: 'theatremanager', password: 'tom2025' }
     ];
 
     const user = validCredentials.find(
