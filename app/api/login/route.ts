@@ -7,11 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
 
-    // Demo credentials - require approval for access
+    // Approved access credential
     const validCredentials = [
-      { username: 'demo', password: 'nhscep2025' },
-      { username: 'admin', password: 'medaskca2025' },
-      { username: 'theatremanager', password: 'tom2025' }
+      { username: 'demo', password: 'cohort10' }
     ];
 
     const user = validCredentials.find(
