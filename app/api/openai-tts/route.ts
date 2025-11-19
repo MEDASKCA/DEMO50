@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       model: "tts-1-hd",
       voice: voice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
       input: text,
-      speed: 1.0, // Normal speed for more natural sound
+      speed: 1.15, // 15% faster for more energetic, natural delivery
     });
 
     console.log('✅ OpenAI TTS generated successfully');
