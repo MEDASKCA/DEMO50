@@ -485,7 +485,7 @@ export default function CinematicAutoPlay() {
               />
             </motion.div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-3 md:mb-4 px-2">
-              The Complete TOM Experience
+              The TOM Experience
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-3 md:mb-4 px-2">
               A comprehensive journey through <span className="text-teal-400 font-semibold">Theatre Operations Management</span>
