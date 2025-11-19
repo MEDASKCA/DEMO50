@@ -2,7 +2,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, VolumeX, Mic, Play, SkipForward } from 'lucide-react';
+import { Volume2, VolumeX, Mic, Play, SkipForward, Users, Calendar, Package, GraduationCap, MessageSquare, TrendingUp, Shield, Zap, Settings, X } from 'lucide-react';
+
+// Available OpenAI voices
+const OPENAI_VOICES = [
+  { id: 'alloy', name: 'Alloy', description: 'Neutral and balanced' },
+  { id: 'echo', name: 'Echo', description: 'Warm and upbeat' },
+  { id: 'fable', name: 'Fable', description: 'British, expressive (Default TOM voice)' },
+  { id: 'onyx', name: 'Onyx', description: 'Deep and authoritative' },
+  { id: 'nova', name: 'Nova', description: 'Energetic and lively' },
+  { id: 'shimmer', name: 'Shimmer', description: 'Soft and clear' },
+] as const;
+
+type VoiceId = typeof OPENAI_VOICES[number]['id'];
 
 export default function CinematicAutoPlay() {
   const [currentSection, setCurrentSection] = useState(-1); // -1 = start screen
@@ -10,11 +22,41 @@ export default function CinematicAutoPlay() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [useVoice, setUseVoice] = useState(true);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<VoiceId>('fable');
+  const [showSettings, setShowSettings] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioCacheRef = useRef<Map<number, string>>(new Map());
 
-  // TOM's cinematic narration - British wit & professional humor
+  // Load voice preference from localStorage
+  useEffect(() => {
+    const savedVoice = localStorage.getItem('tom_voice_preference');
+    if (savedVoice && OPENAI_VOICES.some(v => v.id === savedVoice)) {
+      setSelectedVoice(savedVoice as VoiceId);
+    }
+  }, []);
+
+  // Save voice preference to localStorage
+  const handleVoiceChange = (voiceId: VoiceId) => {
+    setSelectedVoice(voiceId);
+    localStorage.setItem('tom_voice_preference', voiceId);
+    // Clear audio cache when voice changes
+    audioCacheRef.current.clear();
+  };
+
+  // Keyboard shortcut to open settings (Ctrl+Shift+V)
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+        e.preventDefault();
+        setShowSettings(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  // TOM's comprehensive cinematic narration - British wit & professional humor
   const sections = [
     {
       title: "THE CRISIS",
@@ -30,7 +72,7 @@ export default function CinematicAutoPlay() {
     },
     {
       title: "MEET TOM",
-      narration: "Allow me to introduce myself. I am TOM. Theatre Operations Manager. Though I prefer to think of myself as the conductor of your digital symphony. Built by MEDAS-KA, a company with a rather cheeky mission to make the impossible, inevitable. Our vision? Simple. An NHS where technology serves humanity, not the other way around. Where data flows like a well-brewed cup of tea. Smooth, integrated, and utterly delightful. I don't replace your staff. I don't compete with your systems. I unite them. I'm basically the diplomatic genius your tech stack desperately needs.",
+      narration: "Allow me to introduce myself. I am TOM. Theatre Operations Manager. Though I prefer to think of myself as the conductor of your digital symphony. Built by MEDASKCA, a company with a rather cheeky mission to make the impossible, inevitable. Our vision? Simple. An NHS where technology serves humanity, not the other way around. Where data flows like a well-brewed cup of tea. Smooth, integrated, and utterly delightful. I don't replace your staff. I don't compete with your systems. I unite them. I'm basically the diplomatic genius your tech stack desperately needs.",
       duration: 40000,
       visual: "awakening"
     },
@@ -45,6 +87,60 @@ export default function CinematicAutoPlay() {
       narration: "Here's where it gets interesting. I learn. Not just data, but context. Your workflows. Your language. The way Sister Margaret prefers her handovers. The fact that Theatre Three always runs late on Wednesdays. I see patterns twenty four to forty eight hours before they become problems. That's not magic. That's mathematics with personality. I connect your patient system to your rostering to your inventory to your, well, everything. And then I make it all work together. Like a proper British queue. Orderly, efficient, and surprisingly effective.",
       duration: 42000,
       visual: "how"
+    },
+    {
+      title: "THE SIX PILLARS",
+      narration: "Allow me to walk you through my capabilities. Think of them as six pillars holding up your entire theatre operation. Workforce. Skills-aware rostering that actually understands competencies and leave. Services. A live digiboard showing exactly what's happening, right now. Logistics. Because missing a tray shouldn't delay a case. Education. Training records that don't vanish into filing cabinets. Communication. Announcements that reach the right people at the right time. And Improvement. Analytics that actually answer the questions your board is asking. Six pillars. One platform. Infinite patience.",
+      duration: 45000,
+      visual: "pillars",
+      content: [
+        { icon: Users, title: "Workforce", desc: "Skills-aware rostering, profiles and leave management" },
+        { icon: Calendar, title: "Services", desc: "Live digiboard, procedure cards, and real-time logging" },
+        { icon: Package, title: "Logistics", desc: "Requests, trackers, inventory - trays, implants, devices" },
+        { icon: GraduationCap, title: "Education", desc: "Training dates, attendance, mentorship, appraisals" },
+        { icon: MessageSquare, title: "Communication", desc: "Announcements and Teams integration" },
+        { icon: TrendingUp, title: "Improvement", desc: "Analytics, exports, and actionable insights" }
+      ]
+    },
+    {
+      title: "THE BENEFITS",
+      narration: "Now, what does this actually mean for your team? Theatre managers see delays as they happen. Not three hours later. Now. Coordinators can move resources across lists without seventeen phone calls. Theatre staff get rosters that respect their skills and banding. Schedulers can spot conflicts before they become problems. Surgeons know exactly when to head down, with mobile updates. And operations teams get analytics that don't require a PhD in Excel to interpret. Everyone wins. Except maybe that crying spreadsheet.",
+      duration: 40000,
+      visual: "benefits"
+    },
+    {
+      title: "THE OUTCOMES",
+      narration: "The results? Let me paint you a picture with numbers. Theatre utilisation? Up twelve to eighteen percent. That's real patients. Real procedures. Real lives improved. Turnaround variance? Down twenty five to forty percent. Consistency is king. And first-case delays? Reduced by an average of nine minutes. Nine minutes might not sound like much. Until you multiply it by every theatre, every day, every year. Then it becomes rather spectacular, doesn't it?",
+      duration: 38000,
+      visual: "outcomes",
+      stats: [
+        { value: "↑ 12–18%", label: "Theatre utilisation" },
+        { value: "↓ 25–40%", label: "Turnaround variance" },
+        { value: "− 9m", label: "Average first-case delay" }
+      ]
+    },
+    {
+      title: "INTEGRATIONS",
+      narration: "Now, I know what you're thinking. This sounds wonderful, but what about our existing systems? Excellent question. I play nicely with others. Microsoft Teams for announcements. Check. Spreadsheet imports for lists and rosters. Check. Single sign-on with Entra ID. Check. E P R or P A S connections? On the roadmap. You can start simple and expand when you're ready. I'm patient. I'm an AI. I've got time.",
+      duration: 35000,
+      visual: "integrations"
+    },
+    {
+      title: "SECURITY",
+      narration: "And security? Oh, I take that very seriously. UK data residency. Encryption in transit and at rest. Access controls and audit logs. D S P T and I S O twenty seven thousand and one compliant. Because healthcare data deserves healthcare-grade protection. Your patients trust you. You can trust me. It's a proper British circle of trust.",
+      duration: 32000,
+      visual: "security"
+    },
+    {
+      title: "REAL VOICES",
+      narration: "But don't just take my word for it. Listen to the people actually using me. Theatre managers saying the digiboard turned delays into actions. Matrons noting that staffing finally reflects skills mix. Performance leads who no longer dread board pack season. These aren't marketing soundbites. These are real teams, seeing real change, in real time. And let me tell you, nothing makes me prouder than that.",
+      duration: 38000,
+      visual: "testimonials",
+      quotes: [
+        { text: "The digiboard turned delays into actions. Turnaround fell in weeks.", author: "Theatre Manager, Acute Trust" },
+        { text: "Staffing reflects skills mix. Pairing scrub teams is no longer guesswork.", author: "Matron, Theatres" },
+        { text: "Exports made the board pack painless. The 'so what' is obvious now.", author: "Performance Lead" }
+      ]
     },
     {
       title: "THE TRANSFORMATION",
@@ -68,7 +164,7 @@ export default function CinematicAutoPlay() {
       const response = await fetch('/api/openai-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'fable' }),
+        body: JSON.stringify({ text, voice: selectedVoice }),
       });
 
       if (response.ok && response.headers.get('content-type')?.includes('audio/mpeg')) {
@@ -82,8 +178,15 @@ export default function CinematicAutoPlay() {
     }
   };
 
-  const speakWithTOM = async (text: string, sectionIndex: number) => {
+  const speakWithTOM = async (text: string, sectionIndex: number): Promise<void> => {
     if (!useVoice) return;
+
+    // Stop any currently playing audio first
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    speechSynthesis.cancel();
 
     setIsSpeaking(true);
     setIsLoadingAudio(true);
@@ -96,7 +199,7 @@ export default function CinematicAutoPlay() {
         const response = await fetch('/api/openai-tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, voice: 'fable' }),
+          body: JSON.stringify({ text, voice: selectedVoice }),
         });
 
         if (response.ok) {
@@ -122,32 +225,49 @@ export default function CinematicAutoPlay() {
         console.log('✅ Using cached audio');
       }
 
-      const audio = new Audio(audioUrl);
+      // Return a promise that resolves when audio finishes playing
+      return new Promise((resolve, reject) => {
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
 
-      audio.onloadeddata = () => {
-        setIsLoadingAudio(false);
-      };
+        audio.onloadeddata = () => {
+          setIsLoadingAudio(false);
+        };
 
-      audio.onended = () => {
-        console.log('✅ Audio finished playing');
-        setIsSpeaking(false);
-      };
+        audio.onended = () => {
+          console.log('✅ Audio finished playing');
+          setIsSpeaking(false);
+          audioRef.current = null;
+          resolve();
+        };
 
-      audio.onerror = (e) => {
-        console.error('❌ Audio playback error:', e);
-        setIsSpeaking(false);
-        setIsLoadingAudio(false);
-        useBrowserVoice(text);
-      };
+        audio.onerror = (e) => {
+          console.error('❌ Audio playback error:', e);
+          setIsSpeaking(false);
+          setIsLoadingAudio(false);
+          audioRef.current = null;
+          useBrowserVoice(text);
+          resolve(); // Resolve anyway to continue flow
+        };
 
-      console.log('▶️ Playing audio...');
-      await audio.play();
-      setIsLoadingAudio(false);
-
-      // Preload next section while current is playing
-      if (sectionIndex + 1 < sections.length) {
-        preloadAudio(sectionIndex + 1);
-      }
+        console.log('▶️ Playing audio...');
+        audio.play()
+          .then(() => {
+            setIsLoadingAudio(false);
+            // Preload next section while current is playing
+            if (sectionIndex + 1 < sections.length) {
+              preloadAudio(sectionIndex + 1);
+            }
+          })
+          .catch((err) => {
+            console.error('❌ Play failed:', err);
+            setIsLoadingAudio(false);
+            setIsSpeaking(false);
+            audioRef.current = null;
+            useBrowserVoice(text);
+            resolve();
+          });
+      });
     } catch (error) {
       console.error('❌ TTS error:', error);
       setIsLoadingAudio(false);
@@ -167,7 +287,6 @@ export default function CinematicAutoPlay() {
     utterance.pitch = 0.9;
     utterance.volume = 1.0;
 
-    // Try to use British voice
     const voices = speechSynthesis.getVoices();
     const britishVoice = voices.find(v =>
       v.lang.includes('en-GB') || v.name.includes('British') || v.name.includes('Daniel')
@@ -182,22 +301,25 @@ export default function CinematicAutoPlay() {
 
   const playSection = async (index: number) => {
     if (index >= sections.length) {
-      // End of presentation
       return;
     }
 
     setCurrentSection(index);
+
+    // Wait for audio to completely finish playing
     await speakWithTOM(sections[index].narration, index);
 
-    // Auto-advance to next section
-    timeoutRef.current = setTimeout(() => {
-      playSection(index + 1);
-    }, sections[index].duration);
+    // Add a 2-second pause between sections for smooth transition
+    await new Promise(resolve => {
+      timeoutRef.current = setTimeout(resolve, 2000);
+    });
+
+    // Move to next section
+    playSection(index + 1);
   };
 
   const startExperience = async () => {
     setIsPlaying(true);
-    // Preload first section before starting
     if (useVoice) {
       await preloadAudio(0);
     }
@@ -205,9 +327,24 @@ export default function CinematicAutoPlay() {
   };
 
   const skipSection = () => {
+    // Clear any pending timeouts
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
+
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
+    // Cancel browser voice if active
+    speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsLoadingAudio(false);
+
+    // Move to next section immediately
     playSection(currentSection + 1);
   };
 
@@ -216,6 +353,7 @@ export default function CinematicAutoPlay() {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      speechSynthesis.cancel();
     };
   }, []);
 
@@ -273,13 +411,13 @@ export default function CinematicAutoPlay() {
               />
             </motion.div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-3 md:mb-4 px-2">
-              Welcome to the Future
+              The Complete TOM Experience
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-3 md:mb-4 px-2">
-              Experience <span className="text-teal-400 font-semibold">TOM by MEDASKCA</span>
+              A comprehensive journey through <span className="text-teal-400 font-semibold">Theatre Operations Management</span>
             </p>
             <p className="text-gray-500 text-xs sm:text-sm px-2">
-              A cinematic journey narrated by TOM himself
+              Narrated by TOM himself • ~8 minutes
             </p>
           </motion.div>
 
@@ -312,7 +450,7 @@ export default function CinematicAutoPlay() {
             </motion.button>
 
             <p className="text-gray-500 text-xs sm:text-sm px-4">
-              {useVoice ? "🎙️ TOM will narrate your 4-minute journey" : "📖 Silent reading mode • 4 minutes"}
+              {useVoice ? "🎙️ Full presentation with TOM's narration" : "📖 Silent reading mode"}
             </p>
           </motion.div>
         </div>
@@ -392,9 +530,9 @@ export default function CinematicAutoPlay() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
           transition={{ duration: 1.5, ease: "easeInOut" }}
-          className="h-full flex items-center justify-center px-4"
+          className="h-full flex items-center justify-center px-4 overflow-y-auto"
         >
-          <div className="text-center max-w-4xl px-4">
+          <div className="text-center max-w-6xl px-4 py-8">
             <motion.h2
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -404,6 +542,7 @@ export default function CinematicAutoPlay() {
               {section.title}
             </motion.h2>
 
+            {/* TOM Awakening */}
             {section.visual === "awakening" && (
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -433,6 +572,77 @@ export default function CinematicAutoPlay() {
               </motion.div>
             )}
 
+            {/* Six Pillars */}
+            {section.visual === "pillars" && section.content && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8"
+              >
+                {section.content.map((item: any, i: number) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.7 + i * 0.1, duration: 0.5 }}
+                    className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10 hover:border-teal-500/50 transition-all"
+                  >
+                    <item.icon className="w-8 h-8 text-teal-400 mb-3 mx-auto" />
+                    <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                    <p className="text-sm text-gray-400">{item.desc}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Outcomes Stats */}
+            {section.visual === "outcomes" && section.stats && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-8"
+              >
+                {section.stats.map((stat: any, i: number) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.7 + i * 0.15, duration: 0.6 }}
+                    className="bg-gradient-to-br from-teal-500/20 to-blue-500/20 backdrop-blur-xl rounded-2xl p-8 border border-white/10"
+                  >
+                    <div className="text-4xl sm:text-5xl font-black text-white mb-2">{stat.value}</div>
+                    <div className="text-sm text-gray-400">{stat.label}</div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Testimonials */}
+            {section.visual === "testimonials" && section.quotes && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="space-y-6 mb-8 max-w-4xl mx-auto"
+              >
+                {section.quotes.map((quote: any, i: number) => (
+                  <motion.blockquote
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7 + i * 0.2, duration: 0.6 }}
+                    className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border-l-4 border-teal-500 text-left"
+                  >
+                    <p className="text-gray-300 italic mb-3">"{quote.text}"</p>
+                    <footer className="text-sm text-gray-500">— {quote.author}</footer>
+                  </motion.blockquote>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Invitation CTA */}
             {section.visual === "invitation" && (
               <motion.button
                 onClick={() => window.location.href = 'https://tom.medaskca.com'}
@@ -447,16 +657,105 @@ export default function CinematicAutoPlay() {
               </motion.button>
             )}
 
+            {/* Narration text */}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 1.5 }}
-              className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto"
+              className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 leading-relaxed max-w-4xl mx-auto"
             >
               {section.narration}
             </motion.p>
           </div>
         </motion.div>
+      </AnimatePresence>
+
+      {/* Settings Button */}
+      {isPlaying && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={() => setShowSettings(!showSettings)}
+          className="fixed bottom-6 left-6 z-50 p-3 bg-gray-800/80 backdrop-blur-md rounded-full border border-gray-700 hover:bg-gray-700/80 transition-all shadow-lg"
+          title="Voice Settings (Ctrl+Shift+V)"
+        >
+          <Settings className="w-5 h-5 text-gray-300" />
+        </motion.button>
+      )}
+
+      {/* Voice Settings Panel */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowSettings(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-900 rounded-2xl p-8 border border-gray-700 max-w-2xl w-full mx-4 shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">Voice Settings</h2>
+                  <p className="text-sm text-gray-400">Select TOM's voice (applies globally)</p>
+                </div>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Voice Options */}
+              <div className="space-y-3">
+                {OPENAI_VOICES.map((voice) => (
+                  <button
+                    key={voice.id}
+                    onClick={() => handleVoiceChange(voice.id)}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                      selectedVoice === voice.id
+                        ? 'border-teal-500 bg-teal-500/10'
+                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">{voice.name}</span>
+                          {selectedVoice === voice.id && (
+                            <span className="text-xs px-2 py-0.5 bg-teal-500 text-white rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-400 mt-1">{voice.description}</p>
+                      </div>
+                      <Volume2 className={`w-5 h-5 ${selectedVoice === voice.id ? 'text-teal-500' : 'text-gray-500'}`} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Footer Note */}
+              <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                <p className="text-xs text-gray-400">
+                  💡 <strong>Tip:</strong> Press <kbd className="px-2 py-1 bg-gray-700 rounded text-gray-300">Ctrl+Shift+V</kbd> to quickly access voice settings
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Voice preference is saved globally and will apply to both the intro and TOM dashboard.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
