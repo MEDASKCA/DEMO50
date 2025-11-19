@@ -34,6 +34,14 @@ export default function LoginPage() {
         setTimeout(() => {
           router.push('/');
         }, 1000);
+      } else if (data.requiresApproval) {
+        // Show approval required message with link to contact form
+        setError('Access requires approval. Please submit a request via the Contact Form.');
+        setLoading(false);
+        // Optionally redirect to registration/contact form after a delay
+        setTimeout(() => {
+          window.location.href = 'https://medaskca.com/register';
+        }, 3000);
       } else {
         setError(data.message || 'Invalid credentials. Please try again.');
         setLoading(false);
