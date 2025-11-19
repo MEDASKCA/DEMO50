@@ -198,7 +198,7 @@ export default function CinematicAutoPlay() {
           ))}
         </div>
 
-        <div className="text-center space-y-8 z-10 px-4">
+        <div className="text-center space-y-6 md:space-y-8 z-10 px-4 max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -206,7 +206,7 @@ export default function CinematicAutoPlay() {
           >
             {/* MEDASKCA Logo */}
             <motion.div
-              className="w-48 h-48 mx-auto mb-8 rounded-full overflow-hidden"
+              className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 mx-auto mb-6 md:mb-8 rounded-full overflow-hidden"
               animate={{
                 boxShadow: [
                   '0 0 20px rgba(20, 184, 166, 0.3)',
@@ -224,13 +224,13 @@ export default function CinematicAutoPlay() {
                 style={{ mixBlendMode: 'screen' }}
               />
             </motion.div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-3 md:mb-4 px-2">
               Welcome to the Future
             </h1>
-            <p className="text-xl md:text-2xl text-gray-400 mb-4">
+            <p className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-3 md:mb-4 px-2">
               Experience <span className="text-teal-400 font-semibold">TOM by MEDASKCA</span>
             </p>
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-xs sm:text-sm px-2">
               A cinematic journey narrated by TOM himself
             </p>
           </motion.div>
@@ -241,14 +241,14 @@ export default function CinematicAutoPlay() {
             transition={{ delay: 0.5, duration: 1 }}
             className="space-y-6"
           >
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
               <button
                 onClick={() => setUseVoice(!useVoice)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-full backdrop-blur-xl transition-all ${
+                className={`flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full backdrop-blur-xl transition-all text-sm sm:text-base w-full sm:w-auto justify-center ${
                   useVoice ? 'bg-teal-500/30 hover:bg-teal-500/40' : 'bg-white/10 hover:bg-white/20'
                 }`}
               >
-                <Mic className={`w-5 h-5 ${useVoice ? 'text-teal-300' : 'text-white'}`} />
+                <Mic className={`w-4 h-4 sm:w-5 sm:h-5 ${useVoice ? 'text-teal-300' : 'text-white'}`} />
                 <span className="text-white">{useVoice ? "TOM's Voice ON" : "TOM's Voice OFF"}</span>
               </button>
             </div>
@@ -257,13 +257,13 @@ export default function CinematicAutoPlay() {
               onClick={startExperience}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-12 py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-xl shadow-2xl hover:shadow-teal-500/50 transition-all flex items-center gap-3 mx-auto"
+              className="px-8 sm:px-10 md:px-12 py-4 sm:py-5 md:py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-base sm:text-lg md:text-xl shadow-2xl hover:shadow-teal-500/50 transition-all flex items-center gap-2 sm:gap-3 mx-auto"
             >
-              <Play className="w-6 h-6" />
-              Begin Experience
+              <Play className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>Begin Experience</span>
             </motion.button>
 
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-xs sm:text-sm px-4">
               {useVoice ? "🎙️ TOM will narrate your 4-minute journey" : "📖 Silent reading mode • 4 minutes"}
             </p>
           </motion.div>
@@ -280,14 +280,14 @@ export default function CinematicAutoPlay() {
       {/* Skip button */}
       <button
         onClick={skipSection}
-        className="fixed top-8 right-8 z-50 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl transition-all flex items-center gap-2"
+        className="fixed top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 z-50 px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl transition-all flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base"
       >
-        <SkipForward className="w-5 h-5" />
-        <span>Skip</span>
+        <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
+        <span className="hidden sm:inline">Skip</span>
       </button>
 
       {/* Progress indicator */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex gap-2">
+      <div className="fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 flex gap-1.5 sm:gap-2">
         {sections.map((_, i) => (
           <div
             key={i}
@@ -305,14 +305,14 @@ export default function CinematicAutoPlay() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full bg-teal-500/20 backdrop-blur-xl border border-teal-500/30 flex items-center gap-3"
+            className="fixed bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-teal-500/20 backdrop-blur-xl border border-teal-500/30 flex items-center gap-2 sm:gap-3"
           >
             <motion.div
               animate={{ scale: [1, 1.3, 1] }}
               transition={{ repeat: Infinity, duration: 1 }}
-              className="w-3 h-3 bg-teal-500 rounded-full"
+              className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-teal-500 rounded-full"
             />
-            <span className="text-teal-300 font-medium">TOM is speaking...</span>
+            <span className="text-teal-300 font-medium text-xs sm:text-sm md:text-base">TOM is speaking...</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -327,12 +327,12 @@ export default function CinematicAutoPlay() {
           transition={{ duration: 1.5, ease: "easeInOut" }}
           className="h-full flex items-center justify-center px-4"
         >
-          <div className="text-center max-w-4xl">
+          <div className="text-center max-w-4xl px-4">
             <motion.h2
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3, duration: 1 }}
-              className="text-2xl md:text-4xl font-light text-gray-400 mb-8"
+              className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-light text-gray-400 mb-6 sm:mb-8"
             >
               {section.title}
             </motion.h2>
@@ -345,7 +345,7 @@ export default function CinematicAutoPlay() {
                 className="mb-12"
               >
                 <div
-                  className="w-64 h-64 mx-auto rounded-full overflow-hidden"
+                  className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 mx-auto rounded-full overflow-hidden"
                   style={{
                     background: 'black',
                     filter: isSpeaking ? 'drop-shadow(0 0 60px rgba(20, 184, 166, 0.8))' : 'drop-shadow(0 0 30px rgba(20, 184, 166, 0.4))',
@@ -358,11 +358,11 @@ export default function CinematicAutoPlay() {
                     style={{ mixBlendMode: 'screen' }}
                   />
                 </div>
-                <h1 className="text-7xl md:text-9xl font-black bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 bg-clip-text text-transparent mt-8">
+                <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 bg-clip-text text-transparent mt-6 sm:mt-8">
                   TOM
                 </h1>
-                <p className="text-2xl text-gray-400 mt-4">Theatre Operations Manager</p>
-                <p className="text-lg text-gray-500 mt-2">by MEDASKCA™</p>
+                <p className="text-lg sm:text-xl md:text-2xl text-gray-400 mt-3 sm:mt-4">Theatre Operations Manager</p>
+                <p className="text-base sm:text-lg text-gray-500 mt-2">by MEDASKCA™</p>
               </motion.div>
             )}
 
@@ -374,7 +374,7 @@ export default function CinematicAutoPlay() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1, duration: 1 }}
-                className="mt-12 px-12 py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-xl shadow-2xl hover:shadow-teal-500/50 transition-all"
+                className="mt-8 sm:mt-10 md:mt-12 px-8 sm:px-10 md:px-12 py-4 sm:py-5 md:py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-base sm:text-lg md:text-xl shadow-2xl hover:shadow-teal-500/50 transition-all"
               >
                 Enter TOM Dashboard
               </motion.button>
@@ -384,7 +384,7 @@ export default function CinematicAutoPlay() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 1.5 }}
-              className="text-lg md:text-xl text-gray-300 leading-relaxed"
+              className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto"
             >
               {section.narration}
             </motion.p>
