@@ -488,7 +488,7 @@ export default function CinematicAutoPlay() {
               The TOM Experience
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-400 mb-3 md:mb-4 px-2">
-              A comprehensive journey through <span className="text-teal-400 font-semibold">Theatre Operations Management</span>
+              <span className="text-teal-400 font-semibold">Theatre Operations Reimagined</span>
             </p>
             <p className="text-gray-500 text-xs sm:text-sm px-2">
               Narrated by TOM himself • ~8 minutes
