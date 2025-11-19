@@ -368,18 +368,27 @@ export default function CinematicAutoPlay() {
       return;
     }
 
+    // Stop any currently playing audio first
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    speechSynthesis.cancel();
+
     setCurrentSection(index);
+    setIsSpeaking(false);
 
     // Wait for audio to completely finish playing
     await speakWithTOM(sections[index].narration, index);
 
-    // Add a 2-second pause between sections for smooth transition
+    // Add a 1-second pause between sections for smooth transition
     await new Promise(resolve => {
-      timeoutRef.current = setTimeout(resolve, 2000);
+      timeoutRef.current = setTimeout(resolve, 1000);
     });
 
     // Move to next section
-    playSection(index + 1);
+    await playSection(index + 1);
   };
 
   const startExperience = async () => {
