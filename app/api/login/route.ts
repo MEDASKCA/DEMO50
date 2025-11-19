@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     // Approved access credential
     const validCredentials = [
-      { username: 'demo', password: 'cohort10' }
+      { username: 'nhscep2025', password: 'cohort10' }
     ];
 
     const user = validCredentials.find(
