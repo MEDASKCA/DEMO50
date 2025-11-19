@@ -368,7 +368,7 @@ export default function CinematicAutoPlay() {
 
             {section.visual === "invitation" && (
               <motion.button
-                onClick={() => window.location.href = 'https://theatre-operations-manager-j7w39axny-alex-monterubios-projects.vercel.app/admin?view=chat'}
+                onClick={() => window.location.href = 'https://tom.medaskca.com'}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0, y: 20 }}
