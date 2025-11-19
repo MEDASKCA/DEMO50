@@ -45,7 +45,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-black">
       <style jsx>{`
         @keyframes logoSpinOnce {
           from {
@@ -62,7 +62,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md">
         {/* Login Card */}
-        <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200">
+        <div className="bg-gray-900 rounded-2xl p-8 shadow-xl border border-gray-800">
           {/* Header with Logo */}
           <div className="text-center mb-8">
             <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full mb-4 ${authenticated ? 'spin-once' : ''}`} style={{
@@ -74,7 +74,7 @@ export default function LoginPage() {
                 width: '100%',
                 height: '100%',
                 borderRadius: '50%',
-                backgroundColor: 'white',
+                backgroundColor: 'black',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -83,22 +83,22 @@ export default function LoginPage() {
                 <img
                   src="https://raw.githubusercontent.com/MEDASKCA/OPS/main/logo-medaskca.png"
                   alt="MEDASKCA Logo"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen' }}
                 />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-white mb-2">
               MEDASKCA
             </h1>
-            <p className="text-sm text-gray-600">Healthcare Operations Platform</p>
+            <p className="text-sm text-gray-400">Healthcare Operations Platform</p>
             <p className="text-xs mt-1 text-gray-500">Intelligent operations management for NHS trusts</p>
             <p className="text-xs mt-1 text-gray-500">Featuring TOM - Theatre Operations Manager</p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
-              <p className="text-sm text-center text-red-600">{error}</p>
+            <div className="mb-6 p-4 rounded-lg bg-red-900/20 border border-red-800">
+              <p className="text-sm text-center text-red-400">{error}</p>
             </div>
           )}
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Username Field */}
             <div>
-              <label htmlFor="username" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="username" className="block text-sm font-semibold text-white mb-2">
                 Username
               </label>
               <div className="relative">
@@ -119,7 +119,7 @@ export default function LoginPage() {
                   required
                   value={credentials.username}
                   onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-                  className="block w-full pl-10 pr-3 py-3 rounded-lg transition-all duration-150 bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-20 outline-none"
+                  className="block w-full pl-10 pr-3 py-3 rounded-lg transition-all duration-150 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-20 outline-none"
                   placeholder="Enter your username"
                   disabled={loading}
                 />
@@ -128,7 +128,7 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="password" className="block text-sm font-semibold text-white mb-2">
                 Password
               </label>
               <div className="relative">
@@ -138,7 +138,7 @@ export default function LoginPage() {
                   required
                   value={credentials.password}
                   onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                  className="block w-full pl-3 pr-12 py-3 rounded-lg transition-all duration-150 bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-20 outline-none"
+                  className="block w-full pl-3 pr-12 py-3 rounded-lg transition-all duration-150 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-20 outline-none"
                   placeholder="Enter your password"
                   disabled={loading}
                 />
@@ -149,9 +149,9 @@ export default function LoginPage() {
                   disabled={loading}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-300 transition-colors" />
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-300 transition-colors" />
                   )}
                 </button>
               </div>
@@ -175,7 +175,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => router.push('/terms')}
-                className="font-medium underline text-cyan-600 hover:text-cyan-700"
+                className="font-medium underline text-cyan-400 hover:text-cyan-300"
               >
                 Non-Disclosure Agreement
               </button>
