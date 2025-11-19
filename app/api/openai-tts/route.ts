@@ -15,20 +15,24 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
+      console.error('❌ OPENAI_API_KEY is missing!');
       return new Response(JSON.stringify({ useBrowserVoice: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
+    console.log(`🎙️ Generating TTS with voice: ${voice}, model: tts-1-hd`);
     const openai = new OpenAI({ apiKey });
 
     const mp3 = await openai.audio.speech.create({
       model: "tts-1-hd",
       voice: voice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
       input: text,
-      speed: 0.85,
+      speed: 1.0, // Normal speed for more natural sound
     });
+
+    console.log('✅ OpenAI TTS generated successfully');
 
     const buffer = Buffer.from(await mp3.arrayBuffer());
 
@@ -40,8 +44,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('TTS Error:', error);
-    return new Response(JSON.stringify({ useBrowserVoice: true }), {
+    console.error('❌ OpenAI TTS Error:', error.message || error);
+    console.error('Full error:', error);
+    return new Response(JSON.stringify({
+      useBrowserVoice: true,
+      error: error.message
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
