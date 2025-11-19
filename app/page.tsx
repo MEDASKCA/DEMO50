@@ -2,20 +2,82 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import { Volume2, VolumeX, ChevronDown, Mic } from 'lucide-react';
 import Image from 'next/image';
 
 export default function CinematicHome() {
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [currentSection, setCurrentSection] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechSynthRef = useRef<SpeechSynthesis | null>(null);
+  const hasSpokenSection = useRef<Set<number>>(new Set());
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   });
+
+  // TOM's narration script for each section
+  const narrationScript = {
+    0: "Every day, the NHS faces a crisis. Ten point four billion pounds spent on temporary staffing. Forty three thousand nursing vacancies. Seven point six one million patients waiting. This cannot continue.",
+    1: "But what if... there was a better way?",
+    2: "I am TOM. Theatre Operations Manager. Built to transform how the NHS runs its theatres. Not to replace your systems, but to make them work together, intelligently.",
+    3: "The problem is clear. Fragmented systems waste precious time. Hidden inefficiencies cost millions. Staff react to crises instead of preventing them. Every decision requires manual coordination across multiple databases.",
+    4: "Here's how I work. I connect seamlessly with your existing systems. I understand context before you ask. I predict problems twenty four to forty eight hours ahead. I speak your language, literally. And I learn continuously, adapting to your trust's unique needs.",
+    5: "The impact is real. Two to three hours saved daily per staff member. Thirty to forty percent reduction in emergency staffing costs. Fifteen to twenty percent increase in theatre utilization. This isn't just efficiency. This is transformation.",
+    6: "The future of NHS theatre operations starts now. Are you ready?"
+  };
+
+  // Initialize speech synthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      speechSynthRef.current = window.speechSynthesis;
+    }
+  }, []);
+
+  // Speak when entering a new section
+  useEffect(() => {
+    if (!voiceEnabled || !hasStarted || !speechSynthRef.current) return;
+
+    // Only speak if we haven't spoken this section yet
+    if (!hasSpokenSection.current.has(currentSection)) {
+      hasSpokenSection.current.add(currentSection);
+      speakText(narrationScript[currentSection as keyof typeof narrationScript]);
+    }
+  }, [currentSection, voiceEnabled, hasStarted]);
+
+  const speakText = (text: string) => {
+    if (!speechSynthRef.current) return;
+
+    // Cancel any ongoing speech
+    speechSynthRef.current.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Configure voice settings for a more cinematic feel
+    utterance.rate = 0.85; // Slightly slower for dramatic effect
+    utterance.pitch = 0.95; // Slightly lower pitch
+    utterance.volume = 1.0;
+
+    // Try to use a British English voice if available
+    const voices = speechSynthRef.current.getVoices();
+    const britishVoice = voices.find(voice =>
+      voice.lang.includes('en-GB') || voice.name.includes('British') || voice.name.includes('Daniel')
+    );
+    if (britishVoice) {
+      utterance.voice = britishVoice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    speechSynthRef.current.speak(utterance);
+  };
 
   // Calculate which section we're in based on scroll
   useEffect(() => {
@@ -174,13 +236,23 @@ export default function CinematicHome() {
             transition={{ delay: 0.5, duration: 1 }}
             className="space-y-4"
           >
-            <button
-              onClick={toggleSound}
-              className="flex items-center gap-2 mx-auto px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
-            >
-              {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-              <span>{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
-            </button>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={toggleSound}
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
+              >
+                {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                <span>{soundEnabled ? 'Music On' : 'Music Off'}</span>
+              </button>
+
+              <button
+                onClick={() => setVoiceEnabled(!voiceEnabled)}
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
+              >
+                <Mic className="w-5 h-5" />
+                <span>{voiceEnabled ? 'TOM Voice On' : 'TOM Voice Off'}</span>
+              </button>
+            </div>
 
             <motion.button
               onClick={startExperience}
@@ -190,6 +262,10 @@ export default function CinematicHome() {
             >
               Begin Experience
             </motion.button>
+
+            <p className="text-center text-gray-500 text-sm mt-4">
+              {voiceEnabled ? '🎙️ TOM will narrate your journey' : '📖 Silent reading mode'}
+            </p>
           </motion.div>
         </div>
       </div>
@@ -198,15 +274,49 @@ export default function CinematicHome() {
 
   return (
     <div ref={containerRef} className="relative bg-black text-white">
-      {/* Sound Toggle */}
-      <motion.button
-        onClick={toggleSound}
-        className="fixed top-8 right-8 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl transition-all"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-      >
-        {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
-      </motion.button>
+      {/* Controls */}
+      <div className="fixed top-8 right-8 z-50 flex gap-3">
+        <motion.button
+          onClick={toggleSound}
+          className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl transition-all"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          title="Toggle background music"
+        >
+          {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+        </motion.button>
+
+        <motion.button
+          onClick={() => setVoiceEnabled(!voiceEnabled)}
+          className={`p-3 rounded-full backdrop-blur-xl transition-all ${
+            voiceEnabled ? 'bg-teal-500/30 hover:bg-teal-500/40' : 'bg-white/10 hover:bg-white/20'
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          title="Toggle TOM's voice narration"
+        >
+          <Mic className={`w-6 h-6 ${voiceEnabled ? 'text-teal-300' : ''}`} />
+        </motion.button>
+      </div>
+
+      {/* Speaking Indicator */}
+      <AnimatePresence>
+        {isSpeaking && voiceEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full bg-teal-500/20 backdrop-blur-xl border border-teal-500/30 flex items-center gap-3"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+              className="w-3 h-3 bg-teal-500 rounded-full"
+            />
+            <span className="text-teal-300 font-medium">TOM is speaking...</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Progress Indicator */}
       <div className="fixed left-8 top-1/2 -translate-y-1/2 z-50 space-y-3">
@@ -302,22 +412,31 @@ export default function CinematicHome() {
           >
             <motion.div
               animate={{
-                boxShadow: [
+                boxShadow: isSpeaking ? [
+                  '0 0 30px 15px rgba(20, 184, 166, 0.6)',
+                  '0 0 80px 40px rgba(20, 184, 166, 0.8)',
+                  '0 0 30px 15px rgba(20, 184, 166, 0.6)'
+                ] : [
                   '0 0 0 0 rgba(20, 184, 166, 0)',
                   '0 0 60px 30px rgba(20, 184, 166, 0.4)',
                   '0 0 0 0 rgba(20, 184, 166, 0)'
                 ]
               }}
-              transition={{ duration: 2, repeat: Infinity }}
+              transition={{ duration: isSpeaking ? 0.8 : 2, repeat: Infinity }}
               className="absolute inset-0 rounded-full"
             />
-            <Image
-              src="https://github.com/MEDASKCA/OPS/raw/refs/heads/main/logo-medaskca.png"
-              alt="MEDASKCA"
-              width={300}
-              height={300}
-              className="mx-auto relative z-10"
-            />
+            <motion.div
+              animate={isSpeaking ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 0.8, repeat: Infinity }}
+            >
+              <Image
+                src="https://github.com/MEDASKCA/OPS/raw/refs/heads/main/logo-medaskca.png"
+                alt="MEDASKCA"
+                width={300}
+                height={300}
+                className="mx-auto relative z-10"
+              />
+            </motion.div>
           </motion.div>
 
           <motion.div
