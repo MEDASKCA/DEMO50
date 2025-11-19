@@ -1,837 +1,628 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, useAnimation, useMotionValue, useTransform } from 'framer-motion';
-import {
-  Brain, Sparkles, Zap, TrendingUp, Activity, Shield,
-  BarChart3, Users, Calendar, Clock, ChevronRight, Star,
-  Mic, MessageSquare, Search, Target, Lightbulb, Rocket,
-  X, Play, BookOpen, Video, ExternalLink, Database, Network,
-  LineChart, AlertCircle
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import MedaskLogo from '@/components/MedaskLogo';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
 
-export default function Home() {
-  const router = useRouter();
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isHoveringCTA, setIsHoveringCTA] = useState(false);
-  const [selectedFeature, setSelectedFeature] = useState<number | null>(null);
+export default function CinematicHome() {
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [currentSection, setCurrentSection] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+
+  // Calculate which section we're in based on scroll
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+    const unsubscribe = scrollYProgress.on("change", (latest) => {
+      if (latest < 0.15) setCurrentSection(0);
+      else if (latest < 0.25) setCurrentSection(1);
+      else if (latest < 0.40) setCurrentSection(2);
+      else if (latest < 0.55) setCurrentSection(3);
+      else if (latest < 0.70) setCurrentSection(4);
+      else if (latest < 0.85) setCurrentSection(5);
+      else setCurrentSection(6);
+    });
+    return () => unsubscribe();
+  }, [scrollYProgress]);
+
+  // Audio setup
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('/ambient-cinematic.mp3');
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.3;
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const features = [
-    {
-      icon: Brain,
-      title: "Context-Aware Intelligence",
-      description: "TOM knows exactly where you are and what you need - before you even ask",
-      gradient: "from-blue-500 to-cyan-500",
-      delay: 0.1,
-      detailedContent: {
-        title: "Context-Aware Intelligence",
-        problem: "NHS staff waste precious time navigating between disconnected systems, searching for information that should be at their fingertips. Every minute spent clicking through siloed databases is a minute lost from patient care.",
-        solution: "TOM integrates seamlessly with your existing NHS systems - PAS, theatre management, rostering, and more - creating a unified intelligence layer. It understands your role, location, and current task, presenting exactly what you need, when you need it.",
-        example: "A theatre coordinator opens TOM at 7am. Instead of logging into five different systems, TOM immediately shows: today's full schedule pulled from your theatre system, staff availability from your roster, equipment status from inventory, and flags a potential conflict - all in one view.",
-        benefits: [
-          "Save 2-3 hours daily per staff member on system navigation",
-          "Reduce errors from manually cross-referencing multiple systems",
-          "Instant access to critical information during emergencies",
-          "Works with your existing infrastructure - no rip and replace"
-        ]
+  const toggleSound = () => {
+    if (audioRef.current) {
+      if (soundEnabled) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(e => console.log('Audio play failed:', e));
       }
-    },
-    {
-      icon: LineChart,
-      title: "Advanced Predictive Analytics",
-      description: "Powerful data analysis with visualizations, forecasting, and actionable insights",
-      gradient: "from-purple-500 to-pink-500",
-      delay: 0.2,
-      detailedContent: {
-        title: "Advanced Predictive Analytics",
-        problem: "Theatre departments sit on mountains of data but lack the tools to extract meaningful insights. Utilization reports are weeks old, patterns go unnoticed, and opportunities for improvement are invisible until it's too late.",
-        solution: "TOM continuously analyzes data from all connected systems, identifying trends, predicting bottlenecks, and generating actionable insights. It transforms raw data into clear visualizations and recommendations aligned with NHS efficiency targets.",
-        example: "TOM analyzes 6 months of theatre data and alerts you: 'Theatre 3 shows a 22-minute average delay on Wednesdays between 2-4pm. Pattern matches anaesthesia handover timing. Suggested solution: adjust handover schedule. Potential savings: 88 hours annually, £15,000 in efficiency gains.'",
-        benefits: [
-          "Identify hidden inefficiencies costing thousands annually",
-          "Forecast demand 2-3 months ahead with 94% accuracy",
-          "Align operations with NHS Long Term Plan targets",
-          "Evidence-based decision making for executive reviews"
-        ]
-      }
-    },
-    {
-      icon: Lightbulb,
-      title: "Proactive Intelligence",
-      description: "TOM identifies conflicts, risks, and opportunities automatically",
-      gradient: "from-orange-500 to-red-500",
-      delay: 0.3,
-      detailedContent: {
-        title: "Proactive Intelligence",
-        problem: "Problems in theatre operations often go unnoticed until they cause delays, cancellations, or patient harm. Staff shortages, equipment conflicts, and scheduling errors emerge as crises rather than preventable issues.",
-        solution: "TOM constantly monitors your operations across all connected systems, using AI to spot potential issues before they impact patients. It alerts the right people at the right time with suggested solutions, turning reactive firefighting into proactive management.",
-        example: "Monday 6am: TOM detects that Theatre Nurse Sarah called in sick, creating a staffing gap for a complex cardiac case at 9am. It cross-references skills databases, identifies three qualified replacements, checks their rosters, and sends notifications - all before the coordinator arrives.",
-        benefits: [
-          "Prevent cancellations by catching conflicts 24-48 hours ahead",
-          "Reduce emergency staffing costs by 30-40%",
-          "Ensure compliance with skill-mix requirements automatically",
-          "Free managers from constant monitoring to focus on improvement"
-        ]
-      }
-    },
-    {
-      icon: Zap,
-      title: "Natural Language Commands",
-      description: "Voice shortcuts: 'Show tomorrow's sessions', 'Check staff availability'",
-      gradient: "from-yellow-500 to-orange-500",
-      delay: 0.4,
-      detailedContent: {
-        title: "Natural Language Commands",
-        problem: "Clinical staff shouldn't need IT training to access vital information. Complex interfaces and multiple login screens create barriers, especially during time-critical situations when every second matters.",
-        solution: "TOM understands natural language - just ask in plain English, by voice or text. No commands to memorize, no forms to fill. Whether you're sterile in theatre or rushing between departments, TOM responds instantly to conversational requests.",
-        example: "A surgeon asks: 'TOM, can we fit an emergency appendectomy this afternoon?' TOM checks: available theatre slots, required staff and their current schedules, equipment availability, and post-op bed capacity - responding in 3 seconds: 'Yes, Theatre 2 available 3-5pm. Staff confirmed. HDU bed reserved.'",
-        benefits: [
-          "Zero learning curve - if you can speak, you can use TOM",
-          "Hands-free operation during sterile procedures",
-          "Instant answers vs. 10+ minutes of system navigation",
-          "Works via mobile, desktop, or voice-only devices"
-        ]
-      }
-    },
-    {
-      icon: Database,
-      title: "Smart System Connection",
-      description: "Pulls real information from all your systems, never makes things up, always shows its sources",
-      gradient: "from-green-500 to-teal-500",
-      delay: 0.5,
-      detailedContent: {
-        title: "Smart System Connection",
-        problem: "NHS trusts operate data silos - patient administration, theatre management, rostering, inventory, and finance rarely communicate. Staff manually reconcile information, leading to errors, delays, and duplicated effort costing millions annually.",
-        solution: "TOM acts like an incredibly organized assistant who knows exactly where every piece of information lives. When you ask a question, it searches all your systems simultaneously, pulls the relevant data, and presents it in a clear answer - showing you exactly where each fact came from. It never guesses or invents information; it only works with real data from your actual systems.",
-        example: "Finance asks TOM: 'What's driving our agency staff spend in theatres?' TOM searches your rostering system (finding vacancy patterns), theatre system (case volumes), HR database (recruitment pipeline), and finance records (cost breakdown), then explains: 'Primary driver: 12 unfilled Band 6 posts. Cases up 18% vs. plan. 3 recruits start next month. Suggested interim: internal bank incentives could save £45k vs. agency.' Each fact links back to its source system.",
-        benefits: [
-          "Break down data silos without expensive system replacements",
-          "One place to get answers from all your systems",
-          "See exactly where every piece of information comes from",
-          "Meets NHS data security and governance standards"
-        ]
-      }
-    },
-    {
-      icon: Network,
-      title: "Continuous Learning & Adaptation",
-      description: "TOM learns from every interaction to serve your trust better",
-      gradient: "from-indigo-500 to-purple-500",
-      delay: 0.6,
-      detailedContent: {
-        title: "Continuous Learning & Adaptation",
-        problem: "Every NHS trust is unique - different systems, workflows, terminology, and priorities. Generic software forces trusts to adapt to rigid tools rather than tools adapting to them, creating friction and resistance to adoption.",
-        solution: "TOM learns your trust's specific language, workflows, and priorities. It adapts to how your teams work, learns from their feedback, and continuously improves its recommendations based on what works in your environment. The more you use it, the better it gets.",
-        example: "Initially, TOM uses standard NHS terminology. After 2 weeks, it learns that your trust calls the main theatre 'Hub' not 'Theatre 1', that 'quick turnaround' means under 20 minutes (not 15), and that Dr. Patel always needs specific equipment ready. It automatically adapts all future interactions to match your trust's unique language and needs.",
-        benefits: [
-          "Feels native to your trust, not generic software",
-          "Reduces training time as TOM learns your terminology",
-          "Recommendations improve weekly based on outcomes",
-          "Respects department-specific workflows and preferences"
-        ]
-      }
-    }
-  ];
-
-  const capabilities = [
-    {
-      text: "Analyze theatre utilization patterns and identify improvement opportunities",
-      detail: "TOM examines historical data to reveal trends in theatre usage, pinpointing underutilized slots and peak demand periods. It calculates your current utilization rate against NHS targets and suggests specific scheduling changes to increase efficiency by 15-20%, potentially recovering hundreds of unused theatre hours annually."
-    },
-    {
-      text: "Predict scheduling conflicts before they cause cancellations",
-      detail: "By analyzing patterns in staff rosters, equipment availability, and case complexity, TOM forecasts potential conflicts 24-48 hours in advance. This early warning system helps prevent last-minute cancellations that cost £1,200+ per case and damage patient trust, while supporting NHS efforts to reduce the 7.6 million patient backlog."
-    },
-    {
-      text: "Optimize staff allocations across skill mix and demand",
-      detail: "TOM balances staff schedules against case complexity, regulatory requirements, and demand forecasts. It ensures you meet safer staffing guidelines while minimizing expensive agency use - helping address the NHS's £10.4bn annual temporary staffing spend while maintaining quality care standards."
-    },
-    {
-      text: "Generate detailed reports for boards and regulators",
-      detail: "Instantly create comprehensive reports aligned with NHS reporting requirements - Model Hospital metrics, Getting It Right First Time (GIRFT) standards, and Care Quality Commission (CQC) evidence. Reports include benchmarking against peers, trend analysis, and improvement recommendations, saving 10+ hours of manual data compilation monthly."
-    },
-    {
-      text: "Identify operational bottlenecks and suggest evidence-based solutions",
-      detail: "TOM maps your entire theatre pathway from booking to discharge, identifying where delays accumulate. It compares your performance against best-practice trusts and national standards, then suggests specific, costed interventions proven to work in similar environments - aligned with Lord Carter's £5bn efficiency opportunity."
-    },
-    {
-      text: "Support digital transformation and system integration goals",
-      detail: "Rather than replacing your existing investments, TOM creates an intelligent layer connecting EPR, theatre systems, rostering, and more. This supports NHS Digital Long Term Plan goals for interoperability and shared records, helping trusts maximize ROI from existing systems while preparing for future digital maturity requirements."
-    }
-  ];
-
-  const handleNavigateToApp = (voiceMode: boolean = false) => {
-    // Navigate to theatre-operations-manager
-    if (voiceMode) {
-      window.location.href = 'https://theatre-operations-manager-j7w39axny-alex-monterubios-projects.vercel.app/admin?view=chat&voiceMode=true';
-    } else {
-      window.location.href = 'https://theatre-operations-manager-j7w39axny-alex-monterubios-projects.vercel.app/admin?view=chat';
+      setSoundEnabled(!soundEnabled);
     }
   };
 
-  return (
-    <div className="min-h-screen overflow-hidden">
-      {/* Animated gradient background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-        {/* Animated orbs */}
-        <motion.div
-          className="absolute w-96 h-96 bg-gradient-to-r from-blue-400/30 to-purple-400/30 rounded-full blur-3xl"
-          animate={{
-            x: [0, 100, 0],
-            y: [0, -100, 0],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          style={{ top: '10%', left: '10%' }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 bg-gradient-to-r from-pink-400/30 to-orange-400/30 rounded-full blur-3xl"
-          animate={{
-            x: [0, -100, 0],
-            y: [0, 100, 0],
-            scale: [1, 1.3, 1],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          style={{ bottom: '10%', right: '10%' }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 bg-gradient-to-r from-cyan-400/30 to-blue-400/30 rounded-full blur-3xl"
-          animate={{
-            x: [0, 50, 0],
-            y: [0, 50, 0],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          style={{ top: '50%', left: '50%' }}
-        />
-      </div>
+  const startExperience = () => {
+    setHasStarted(true);
+    if (audioRef.current && soundEnabled) {
+      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+    }
+  };
 
-      {/* Hero Section */}
-      <div className="relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-24 sm:pb-20">
+  // Transform values for parallax effects
+  const opacity1 = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const opacity2 = useTransform(scrollYProgress, [0.15, 0.25, 0.40], [0, 1, 0]);
+  const opacity3 = useTransform(scrollYProgress, [0.25, 0.40, 0.55], [0, 1, 0]);
+  const opacity4 = useTransform(scrollYProgress, [0.40, 0.55, 0.70], [0, 1, 0]);
+  const opacity5 = useTransform(scrollYProgress, [0.55, 0.70, 0.85], [0, 1, 0]);
+  const opacity6 = useTransform(scrollYProgress, [0.70, 0.85, 1.0], [0, 1, 0]);
+  const opacity7 = useTransform(scrollYProgress, [0.85, 1.0], [0, 1]);
+
+  const scale = useTransform(scrollYProgress, [0.15, 0.25], [0.8, 1]);
+  const logoScale = useTransform(scrollYProgress, [0.25, 0.40], [1, 1.2]);
+
+  const crisisStats = [
+    { value: "£10.4bn", label: "spent on temporary staffing annually", delay: 0 },
+    { value: "43,000", label: "nursing vacancies while 46% plan to leave", delay: 0.5 },
+    { value: "7.61M", label: "patients waiting for procedures", delay: 1 },
+    { value: "£5bn", label: "in potential efficiency savings identified", delay: 1.5 },
+    { value: "30%", label: "of staff experiencing burnout", delay: 2 }
+  ];
+
+  const whyContent = [
+    {
+      title: "Fragmented Systems",
+      description: "Theatre coordinators navigate 5+ disconnected systems daily, wasting hours that should be spent on patient care."
+    },
+    {
+      title: "Invisible Inefficiencies",
+      description: "Trusts pay 22 different prices for identical surgical tools. Opportunities for improvement remain hidden in data silos."
+    },
+    {
+      title: "Reactive Management",
+      description: "Problems become crises before they're noticed. Staff shortages and scheduling conflicts emerge too late to prevent cancellations."
+    },
+    {
+      title: "Manual Coordination",
+      description: "Every handover, every change, every decision requires manual cross-referencing across multiple databases."
+    }
+  ];
+
+  const howFeatures = [
+    {
+      title: "Intelligent Integration",
+      description: "TOM connects seamlessly with your existing PAS, theatre management, rostering, and inventory systems - creating a unified intelligence layer.",
+      icon: "🔗"
+    },
+    {
+      title: "Context-Aware Intelligence",
+      description: "Knows exactly where you are and what you need before you ask. Presents the right information at the right time, automatically.",
+      icon: "🧠"
+    },
+    {
+      title: "Predictive Analytics",
+      description: "Continuously analyzes data to identify trends, predict bottlenecks, and generate actionable insights aligned with NHS targets.",
+      icon: "📊"
+    },
+    {
+      title: "Proactive Monitoring",
+      description: "Spots potential issues 24-48 hours ahead. Prevents cancellations by catching conflicts before they impact patients.",
+      icon: "⚡"
+    },
+    {
+      title: "Natural Language",
+      description: "Just ask in plain English, by voice or text. No commands to memorize, no complex interfaces to learn.",
+      icon: "💬"
+    },
+    {
+      title: "Continuous Learning",
+      description: "Adapts to your trust's unique language, workflows, and priorities. Gets better with every interaction.",
+      icon: "🎓"
+    }
+  ];
+
+  const impactMetrics = [
+    { value: "2-3 hours", label: "saved daily per staff member", icon: "⏱️" },
+    { value: "30-40%", label: "reduction in emergency staffing costs", icon: "💰" },
+    { value: "15-20%", label: "increase in theatre utilization", icon: "📈" },
+    { value: "94%", label: "demand forecast accuracy", icon: "🎯" }
+  ];
+
+  if (!hasStarted) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="text-center space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center"
+            transition={{ duration: 1 }}
           >
-            {/* MEDASKCA Logo */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.6 }}
-              className="flex justify-center mb-6"
-            >
-              <MedaskLogo size={140} variant="compact" animate={true} />
-            </motion.div>
+            <Image
+              src="https://github.com/MEDASKCA/OPS/raw/refs/heads/main/logo-medaskca.png"
+              alt="MEDASKCA"
+              width={200}
+              height={200}
+              className="mx-auto mb-8"
+            />
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
+              Welcome to the Future
+            </h1>
+            <p className="text-xl text-gray-400 mb-8">
+              Experience TOM like never before
+            </p>
+          </motion.div>
 
-            {/* Floating badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 backdrop-blur-xl mb-8"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 1 }}
+            className="space-y-4"
+          >
+            <button
+              onClick={toggleSound}
+              className="flex items-center gap-2 mx-auto px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
             >
-              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
-              <span className="text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Intelligent Integration for Your Existing NHS Systems
-              </span>
-            </motion.div>
+              {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              <span>{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
+            </button>
 
-            {/* Main heading with gradient text */}
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
-              className="text-6xl sm:text-7xl lg:text-8xl font-black mb-6"
+            <motion.button
+              onClick={startExperience}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="block mx-auto px-12 py-4 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-xl shadow-2xl hover:shadow-teal-500/50 transition-all"
             >
-              <motion.span
-                className="inline-block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent"
+              Begin Experience
+            </motion.button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative bg-black text-white">
+      {/* Sound Toggle */}
+      <motion.button
+        onClick={toggleSound}
+        className="fixed top-8 right-8 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl transition-all"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+      </motion.button>
+
+      {/* Progress Indicator */}
+      <div className="fixed left-8 top-1/2 -translate-y-1/2 z-50 space-y-3">
+        {[0, 1, 2, 3, 4, 5, 6].map((section) => (
+          <div
+            key={section}
+            className={`w-2 h-2 rounded-full transition-all duration-500 ${
+              currentSection === section ? 'bg-teal-500 scale-150' : 'bg-white/30'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Section 1: THE CRISIS */}
+      <motion.section
+        style={{ opacity: opacity1 }}
+        className="h-screen flex items-center justify-center sticky top-0"
+      >
+        <div className="text-center space-y-12 px-4">
+          <motion.h2
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 2 }}
+            className="text-2xl md:text-4xl font-light text-gray-400 mb-16"
+          >
+            The NHS Theatre Crisis
+          </motion.h2>
+
+          <div className="space-y-8">
+            {crisisStats.map((stat, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: stat.delay, duration: 1 }}
+                className="space-y-2"
+              >
+                <div className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+                  {stat.value}
+                </div>
+                <div className="text-lg md:text-xl text-gray-400 font-light">
+                  {stat.label}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 3, duration: 2 }}
+            className="pt-16"
+          >
+            <ChevronDown className="w-8 h-8 mx-auto animate-bounce text-teal-500" />
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* Section 2: THE QUESTION */}
+      <motion.section
+        style={{ opacity: opacity2, scale }}
+        className="h-screen flex items-center justify-center sticky top-0"
+      >
+        <div className="text-center space-y-8 px-4">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: currentSection >= 1 ? 1 : 0, y: currentSection >= 1 ? 0 : 20 }}
+            transition={{ duration: 1.5 }}
+            className="text-4xl md:text-6xl font-light"
+          >
+            What if there was
+          </motion.h2>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: currentSection >= 1 ? 1 : 0, y: currentSection >= 1 ? 0 : 20 }}
+            transition={{ delay: 0.5, duration: 1.5 }}
+            className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent"
+          >
+            a better way?
+          </motion.h2>
+        </div>
+      </motion.section>
+
+      {/* Section 3: THE AWAKENING */}
+      <motion.section
+        style={{ opacity: opacity3 }}
+        className="h-screen flex items-center justify-center sticky top-0"
+      >
+        <div className="text-center space-y-12 px-4">
+          <motion.div
+            style={{ scale: logoScale }}
+            className="relative"
+          >
+            <motion.div
+              animate={{
+                boxShadow: [
+                  '0 0 0 0 rgba(20, 184, 166, 0)',
+                  '0 0 60px 30px rgba(20, 184, 166, 0.4)',
+                  '0 0 0 0 rgba(20, 184, 166, 0)'
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute inset-0 rounded-full"
+            />
+            <Image
+              src="https://github.com/MEDASKCA/OPS/raw/refs/heads/main/logo-medaskca.png"
+              alt="MEDASKCA"
+              width={300}
+              height={300}
+              className="mx-auto relative z-10"
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: currentSection >= 2 ? 1 : 0, y: currentSection >= 2 ? 0 : 20 }}
+            transition={{ delay: 0.5, duration: 1 }}
+            className="space-y-4"
+          >
+            <h2 className="text-3xl md:text-5xl font-light text-gray-400">
+              Meet
+            </h2>
+            <h1 className="text-7xl md:text-9xl font-black bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
+              TOM
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-400 font-light">
+              Theatre Operations Manager
+            </p>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              by MEDASKCA™
+            </p>
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* Section 4: THE WHY */}
+      <motion.section
+        style={{ opacity: opacity4 }}
+        className="min-h-screen flex items-center justify-center sticky top-0 py-20"
+      >
+        <div className="max-w-6xl mx-auto px-4">
+          <motion.h2
+            initial={{ opacity: 0 }}
+            animate={{ opacity: currentSection >= 3 ? 1 : 0 }}
+            className="text-5xl md:text-6xl font-bold text-center mb-20"
+          >
+            Why <span className="bg-gradient-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent">TOM</span> Exists
+          </motion.h2>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {whyContent.map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
                 animate={{
-                  backgroundPosition: ['0%', '100%', '0%'],
+                  opacity: currentSection >= 3 ? 1 : 0,
+                  x: currentSection >= 3 ? 0 : (index % 2 === 0 ? -50 : 50)
                 }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "linear"
-                }}
-                style={{
-                  backgroundSize: '200% 200%'
-                }}
+                transition={{ delay: index * 0.2, duration: 0.8 }}
+                className="p-8 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-xl border border-white/10 hover:border-teal-500/50 transition-all"
               >
-                TOM
-              </motion.span>
+                <h3 className="text-2xl font-semibold mb-4 text-teal-400">
+                  {item.title}
+                </h3>
+                <p className="text-gray-400 leading-relaxed">
+                  {item.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Section 5: THE HOW */}
+      <motion.section
+        style={{ opacity: opacity5 }}
+        className="min-h-screen flex items-center justify-center sticky top-0 py-20"
+      >
+        <div className="max-w-7xl mx-auto px-4">
+          <motion.h2
+            initial={{ opacity: 0 }}
+            animate={{ opacity: currentSection >= 4 ? 1 : 0 }}
+            className="text-5xl md:text-6xl font-bold text-center mb-20"
+          >
+            How <span className="bg-gradient-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent">TOM</span> Works
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {howFeatures.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{
+                  opacity: currentSection >= 4 ? 1 : 0,
+                  y: currentSection >= 4 ? 0 : 50
+                }}
+                transition={{ delay: index * 0.15, duration: 0.8 }}
+                whileHover={{ scale: 1.05, y: -10 }}
+                className="p-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-xl border border-white/10 hover:border-teal-500/50 transition-all cursor-pointer"
+              >
+                <div className="text-5xl mb-4">{feature.icon}</div>
+                <h3 className="text-xl font-semibold mb-3 text-teal-400">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Section 6: THE REVOLUTION */}
+      <motion.section
+        style={{ opacity: opacity6 }}
+        className="min-h-screen flex items-center justify-center sticky top-0 py-20"
+      >
+        <div className="max-w-6xl mx-auto px-4">
+          <motion.h2
+            initial={{ opacity: 0 }}
+            animate={{ opacity: currentSection >= 5 ? 1 : 0 }}
+            className="text-5xl md:text-6xl font-bold text-center mb-8"
+          >
+            The <span className="bg-gradient-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent">Impact</span>
+          </motion.h2>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: currentSection >= 5 ? 1 : 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-xl text-center text-gray-400 mb-20 max-w-3xl mx-auto"
+          >
+            Real results from trusts transforming their theatre operations
+          </motion.p>
+
+          <div className="grid md:grid-cols-4 gap-8 mb-16">
+            {impactMetrics.map((metric, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{
+                  opacity: currentSection >= 5 ? 1 : 0,
+                  scale: currentSection >= 5 ? 1 : 0.8
+                }}
+                transition={{ delay: 0.5 + index * 0.1, duration: 0.6 }}
+                whileHover={{ scale: 1.1 }}
+                className="text-center p-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-xl border border-white/10"
+              >
+                <div className="text-4xl mb-3">{metric.icon}</div>
+                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent mb-2">
+                  {metric.value}
+                </div>
+                <div className="text-sm text-gray-400">
+                  {metric.label}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{
+              opacity: currentSection >= 5 ? 1 : 0,
+              y: currentSection >= 5 ? 0 : 30
+            }}
+            transition={{ delay: 1.2, duration: 0.8 }}
+            className="p-8 rounded-2xl bg-gradient-to-r from-teal-500/10 to-blue-500/10 border border-teal-500/30"
+          >
+            <blockquote className="text-2xl md:text-3xl font-light text-center text-gray-300 italic">
+              "TOM doesn't replace your systems. It makes them work together like they always should have."
+            </blockquote>
+            <p className="text-center text-teal-400 mt-4 font-semibold">
+              — The MEDASKCA Vision
+            </p>
+          </motion.div>
+
+          {/* NHS Benefits Grid */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{
+              opacity: currentSection >= 5 ? 1 : 0,
+              y: currentSection >= 5 ? 0 : 30
+            }}
+            transition={{ delay: 1.6, duration: 0.8 }}
+            className="mt-16 grid md:grid-cols-2 gap-6"
+          >
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-green-500/10 to-teal-500/10 border border-green-500/30">
+              <h4 className="text-xl font-semibold text-green-400 mb-3">💷 Financial Benefits</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li>• Address £10.4bn temporary staffing crisis</li>
+                <li>• Capture Lord Carter's £5bn efficiency savings</li>
+                <li>• Reduce agency spend by 30-40%</li>
+                <li>• Standardize procurement across trusts</li>
+              </ul>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/30">
+              <h4 className="text-xl font-semibold text-blue-400 mb-3">🏥 Patient Care Benefits</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li>• Reduce 7.61M patient waiting list</li>
+                <li>• Prevent cancellations with 24-48hr conflict detection</li>
+                <li>• Increase theatre utilization by 15-20%</li>
+                <li>• Improve surgical outcomes through better coordination</li>
+              </ul>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30">
+              <h4 className="text-xl font-semibold text-purple-400 mb-3">👥 Workforce Benefits</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li>• Combat 30% staff burnout rates</li>
+                <li>• Save 2-3 hours daily per staff member</li>
+                <li>• Address 43,000 nursing vacancy challenge</li>
+                <li>• Improve retention with better work conditions</li>
+              </ul>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30">
+              <h4 className="text-xl font-semibold text-orange-400 mb-3">🚀 Strategic Benefits</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li>• Align with NHS Long Term Plan digital transformation</li>
+                <li>• Meet CQC and GIRFT standards automatically</li>
+                <li>• Support ICS integration and shared care records</li>
+                <li>• Future-proof operations for next generation NHS</li>
+              </ul>
+            </div>
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* Section 7: THE INVITATION */}
+      <motion.section
+        style={{ opacity: opacity7 }}
+        className="min-h-screen flex items-center justify-center sticky top-0"
+      >
+        <div className="text-center space-y-12 px-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{
+              opacity: currentSection >= 6 ? 1 : 0,
+              scale: currentSection >= 6 ? 1 : 0.9
+            }}
+            transition={{ duration: 1 }}
+            className="space-y-8"
+          >
+            <h2 className="text-5xl md:text-7xl font-bold">
+              Ready to Transform
               <br />
-              <span className="inline-block text-gray-700 dark:text-gray-300 text-5xl sm:text-6xl lg:text-7xl">
-                by MEDASKCA<sup className="text-2xl sm:text-3xl">™</sup>
+              <span className="bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
+                Your Theatre Operations?
               </span>
-            </motion.h1>
+            </h2>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="text-2xl sm:text-3xl text-gray-600 dark:text-gray-300 mb-4 max-w-4xl mx-auto font-normal"
-            >
-              Your <span className="font-semibold text-blue-600 dark:text-blue-400">Intelligent Theatre Operations Manager</span>
-            </motion.p>
+            <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto font-light">
+              The future of NHS theatre operations starts now. Join forward-thinking trusts already transforming their services with TOM.
+            </p>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
-              className="text-lg text-gray-500 dark:text-gray-400 mb-8 max-w-3xl mx-auto font-light leading-relaxed"
-            >
-              Every day, NHS theatre departments juggle complex schedules, manage precious resources, and coordinate skilled teams - all while navigating multiple disconnected computer systems. Meanwhile, <span className="font-medium text-gray-700 dark:text-gray-300">7.6 million patients wait</span>, and trusts spend <span className="font-medium text-gray-700 dark:text-gray-300">£10.4 billion annually</span> on temporary staff to fill gaps.
-              <span className="block mt-4 font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                TOM connects all your existing systems with intelligent automation, turning data chaos into coordinated action
-              </span>
-            </motion.p>
-
-            {/* CTA Buttons */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: currentSection >= 6 ? 1 : 0 }}
+              transition={{ delay: 0.5, duration: 1 }}
+              className="max-w-4xl mx-auto"
             >
+              <div className="grid md:grid-cols-3 gap-6 my-12">
+                <div className="text-center">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent mb-2">
+                    Today
+                  </div>
+                  <p className="text-sm text-gray-500">Fragmented systems, reactive management</p>
+                </div>
+                <div className="flex items-center justify-center">
+                  <div className="h-0.5 w-full bg-gradient-to-r from-teal-500 to-blue-500" />
+                </div>
+                <div className="text-center">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent mb-2">
+                    Tomorrow
+                  </div>
+                  <p className="text-sm text-gray-400">Unified intelligence, proactive care</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
               <motion.button
-                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onHoverStart={() => setIsHoveringCTA(true)}
-                onHoverEnd={() => setIsHoveringCTA(false)}
-                onClick={() => handleNavigateToApp(false)}
-                className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-semibold text-lg shadow-2xl overflow-hidden"
+                onClick={() => window.location.href = 'https://theatre-operations-manager-j7w39axny-alex-monterubios-projects.vercel.app/admin?view=chat'}
+                className="px-12 py-6 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full font-semibold text-xl shadow-2xl hover:shadow-teal-500/50 transition-all"
               >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600"
-                  initial={{ x: '100%' }}
-                  animate={{ x: isHoveringCTA ? '0%' : '100%' }}
-                  transition={{ duration: 0.3 }}
-                />
-                <span className="relative flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
-                  Launch TOM Dashboard
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </span>
+                Enter TOM Dashboard
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => handleNavigateToApp(true)}
-                className="px-8 py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl text-gray-900 dark:text-white rounded-2xl font-semibold text-lg shadow-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all flex items-center gap-2"
+                onClick={() => window.location.href = 'https://theatre-operations-manager-j7w39axny-alex-monterubios-projects.vercel.app/admin?view=chat&voiceMode=true'}
+                className="px-12 py-6 bg-white/10 hover:bg-white/20 backdrop-blur-xl border-2 border-white/30 text-white rounded-full font-semibold text-xl transition-all"
               >
-                <Mic className="w-5 h-5" />
                 Experience Voice Mode
               </motion.button>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { value: "99.9%", label: "System Uptime", icon: Target },
-            { value: "<100ms", label: "Response Time", icon: Zap },
-            { value: "24/7", label: "Availability", icon: Clock },
-            { value: "∞", label: "Continuous Learning", icon: TrendingUp }
-          ].map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 + index * 0.1 }}
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="p-6 rounded-2xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 text-center"
-            >
-              <stat.icon className="w-8 h-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {stat.value}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-normal mt-1">
-                {stat.label}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* NHS Background Section */}
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="p-8 md:p-12 rounded-3xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 border-2 border-blue-100 dark:border-gray-700"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-            The Reality of NHS Theatre Operations
-          </h2>
-
-          <div className="space-y-6 text-lg text-gray-700 dark:text-gray-300 leading-relaxed font-light">
-            <p>
-              Operating theatres are the beating heart of any NHS trust. Here, highly skilled teams perform life-saving procedures, from emergency appendectomies to complex cardiac surgery. But behind every successful operation lies an intricate web of coordination: scheduling surgeons, anaesthetists, and nurses; ensuring the right equipment is sterilized and ready; managing bed capacity; tracking consumables; and responding to emergencies that disrupt carefully planned schedules.
-            </p>
-
-            <p>
-              Traditionally, this coordination happens across <span className="font-medium text-gray-900 dark:text-white">multiple disconnected computer systems</span>. Theatre coordinators might check the theatre management system for bookings, the rostering system for staff availability, the inventory system for supplies, the patient administration system for medical records, and email for last-minute changes. Each login, each search, each cross-reference takes time - time that could be spent on patient care.
-            </p>
-
-            <p className="bg-white/60 dark:bg-gray-800/60 p-6 rounded-xl border-l-4 border-blue-600">
-              <span className="font-semibold text-gray-900 dark:text-white">The cost is staggering:</span> NHS England spent <span className="font-bold text-blue-600">£10.4 billion</span> on temporary staffing in 2023/24. Over <span className="font-bold text-blue-600">43,000 nursing vacancies</span> exist while 46% of nurses plan to leave (RCN). Meanwhile, <span className="font-bold text-blue-600">7.61 million people</span> await procedures. Lord Carter identified <span className="font-bold text-blue-600">£5 billion in potential efficiency savings</span>, with £1 billion from procurement alone - some trusts pay 22 different prices for identical surgical tools.
-            </p>
-
-            <p>
-              The NHS Long Term Plan calls for digital transformation, better data sharing, and integrated care. But most trusts can't afford to rip out and replace their existing systems. What they need is a way to make those systems <span className="font-medium text-gray-900 dark:text-white">work together intelligently</span>, to surface the right information at the right time, and to spot problems before they become crises.
-            </p>
-
-            <p className="text-xl font-medium text-center pt-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              That's exactly what TOM does.
-            </p>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Features Grid - Changed heading */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Supercharging Your Existing Systems
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto font-light">
-            TOM doesn't replace your infrastructure - it connects, learns from, and amplifies everything you already have. Think of it as adding a highly intelligent nervous system to your current setup.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: feature.delay, duration: 0.6 }}
-              whileHover={{ scale: 1.05, y: -10 }}
-              onClick={() => setSelectedFeature(index)}
-              className="group relative p-8 rounded-3xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-transparent overflow-hidden cursor-pointer"
-            >
-              {/* Gradient overlay on hover */}
-              <motion.div
-                className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-              />
-
-              <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                <feature.icon className="w-7 h-7 text-white" />
-              </div>
-
-              <h3 className="relative text-2xl font-semibold text-gray-900 dark:text-white mb-3">
-                {feature.title}
-              </h3>
-
-              <p className="relative text-gray-600 dark:text-gray-400 leading-relaxed font-light mb-4">
-                {feature.description}
-              </p>
-
-              <div className="relative flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
-                <span>Learn more</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-
-              {/* Shine effect on hover */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                initial={{ x: '-100%' }}
-                whileHover={{ x: '100%' }}
-                transition={{ duration: 0.6 }}
-              />
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Video/Tutorial Section */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            See TOM in Action
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-light">
-            Watch how TOM transforms theatre operations in real NHS environments
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            {
-              title: "Introduction to TOM",
-              duration: "3:45",
-              description: "Overview of TOM's capabilities and how it integrates with your systems",
-              icon: Play
-            },
-            {
-              title: "Voice Mode Tutorial",
-              duration: "5:20",
-              description: "Learn how to use TOM's natural language interface for hands-free operation",
-              icon: Mic
-            },
-            {
-              title: "Analytics Deep Dive",
-              duration: "8:15",
-              description: "Exploring TOM's predictive analytics and reporting features",
-              icon: BarChart3
-            }
-          ].map((video, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.2 }}
-              whileHover={{ scale: 1.05 }}
-              className="group relative rounded-2xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border-2 border-gray-200/50 dark:border-gray-700/50 overflow-hidden cursor-pointer"
-            >
-              <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-black/20" />
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  className="relative w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-xl"
-                >
-                  <video.icon className="w-8 h-8 text-blue-600 ml-1" />
-                </motion.div>
-                <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white text-sm font-medium">
-                  {video.duration}
-                </div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  {video.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 font-light">
-                  {video.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Capabilities Showcase */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              What Can TOM Do for Your Trust?
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 font-light">
-              TOM addresses the real challenges facing NHS theatre departments today - from the £10.4bn temporary staffing crisis to the 7.6 million patient backlog
-            </p>
-
-            <div className="space-y-4">
-              {capabilities.map((capability, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ x: 10 }}
-                  className="group relative"
-                >
-                  <div className="flex items-start gap-4 p-4 rounded-xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 cursor-pointer">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mt-0.5">
-                      <Star className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-lg font-medium text-gray-900 dark:text-white">
-                        {capability.text}
-                      </span>
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        whileHover={{ height: 'auto', opacity: 1 }}
-                        className="overflow-hidden"
-                      >
-                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-light leading-relaxed">
-                          {capability.detail}
-                        </p>
-                      </motion.div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 mt-1" />
-                  </div>
-                </motion.div>
-              ))}
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: currentSection >= 6 ? 0.5 : 0 }}
+            transition={{ delay: 1.5, duration: 1 }}
+            className="pt-16 text-sm text-gray-600"
           >
-            <div className="relative p-8 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-2xl overflow-hidden">
-              {/* Animated background pattern */}
-              <div className="absolute inset-0 opacity-10">
-                {[
-                  { left: 10, top: 20, duration: 2.5, delay: 0 },
-                  { left: 25, top: 60, duration: 3.2, delay: 0.3 },
-                  { left: 40, top: 15, duration: 2.8, delay: 0.6 },
-                  { left: 55, top: 75, duration: 3.5, delay: 0.9 },
-                  { left: 70, top: 35, duration: 2.2, delay: 1.2 },
-                  { left: 85, top: 50, duration: 3.8, delay: 1.5 },
-                  { left: 15, top: 80, duration: 2.7, delay: 0.2 },
-                  { left: 30, top: 40, duration: 3.1, delay: 0.5 },
-                  { left: 45, top: 90, duration: 2.9, delay: 0.8 },
-                  { left: 60, top: 25, duration: 3.3, delay: 1.1 },
-                  { left: 75, top: 65, duration: 2.4, delay: 1.4 },
-                  { left: 90, top: 10, duration: 3.6, delay: 1.7 },
-                  { left: 20, top: 45, duration: 2.6, delay: 0.4 },
-                  { left: 35, top: 85, duration: 3.4, delay: 0.7 },
-                  { left: 50, top: 30, duration: 2.3, delay: 1.0 },
-                  { left: 65, top: 70, duration: 3.7, delay: 1.3 },
-                  { left: 80, top: 55, duration: 2.1, delay: 1.6 },
-                  { left: 5, top: 5, duration: 3.0, delay: 0.1 },
-                  { left: 95, top: 95, duration: 2.8, delay: 1.8 },
-                  { left: 50, top: 50, duration: 3.2, delay: 1.9 }
-                ].map((particle, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute w-2 h-2 bg-white rounded-full"
-                    animate={{
-                      y: [0, -20, 0],
-                      opacity: [0.3, 1, 0.3],
-                    }}
-                    transition={{
-                      duration: particle.duration,
-                      repeat: Infinity,
-                      delay: particle.delay,
-                    }}
-                    style={{
-                      left: `${particle.left}%`,
-                      top: `${particle.top}%`,
-                    }}
-                  />
-                ))}
-              </div>
-
-              <div className="relative text-white">
-                <h3 className="text-2xl font-semibold mb-4">Try asking TOM:</h3>
-                <div className="space-y-3">
-                  {[
-                    "Show me tomorrow's theatre sessions",
-                    "Which surgeons are available next week?",
-                    "Analyze utilization for Q1 2025",
-                    "What conflicts exist in the schedule?",
-                    "Generate a capacity report for the board"
-                  ].map((query, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.5 + index * 0.1 }}
-                      whileHover={{ scale: 1.02, x: 5 }}
-                      className="p-4 rounded-xl bg-white/20 backdrop-blur-xl border border-white/30 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Search className="w-5 h-5 flex-shrink-0" />
-                        <span className="font-normal">{query}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            Designed and built by MEDASKCA™ for the NHS
           </motion.div>
         </div>
-      </div>
+      </motion.section>
 
-      {/* Final CTA */}
-      <div className="relative py-24">
-        <div className="max-w-4xl mx-auto text-center px-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="p-12 rounded-3xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 shadow-2xl"
-          >
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
-              Ready to Transform Your Theatre Operations?
-            </h2>
-            <p className="text-xl text-blue-100 mb-8 font-light">
-              Join NHS trusts already using TOM to improve efficiency, reduce costs, and enhance patient care
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleNavigateToApp(false)}
-                className="px-12 py-6 bg-white text-blue-600 hover:bg-gray-100 rounded-2xl font-semibold text-xl shadow-2xl inline-flex items-center justify-center gap-3"
-              >
-                <Sparkles className="w-6 h-6" />
-                Get Started
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="px-12 py-6 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white border-2 border-white/30 rounded-2xl font-semibold text-xl shadow-2xl inline-flex items-center justify-center gap-3"
-              >
-                <BookOpen className="w-6 h-6" />
-                Read Documentation
-              </motion.button>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Feature Detail Modal */}
-      {selectedFeature !== null && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedFeature(null)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-gray-900 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-          >
-            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-6 flex items-center justify-between z-10">
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${features[selectedFeature].gradient} flex items-center justify-center`}>
-                  {React.createElement(features[selectedFeature].icon, { className: "w-6 h-6 text-white" })}
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {features[selectedFeature].detailedContent.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setSelectedFeature(null)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-              </button>
-            </div>
-
-            <div className="p-8 space-y-6">
-              {/* Problem */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">The Challenge</h4>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-light">
-                  {features[selectedFeature].detailedContent.problem}
-                </p>
-              </div>
-
-              {/* Solution */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-5 h-5 text-yellow-600" />
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">How TOM Solves It</h4>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-light">
-                  {features[selectedFeature].detailedContent.solution}
-                </p>
-              </div>
-
-              {/* Example */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Play className="w-5 h-5 text-blue-600" />
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Real-World Example</h4>
-                </div>
-                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-light italic">
-                    {features[selectedFeature].detailedContent.example}
-                  </p>
-                </div>
-              </div>
-
-              {/* Benefits */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-5 h-5 text-purple-600" />
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Key Benefits</h4>
-                </div>
-                <ul className="space-y-2">
-                  {features[selectedFeature].detailedContent.benefits.map((benefit, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <ChevronRight className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-600 dark:text-gray-400 font-light">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* CTA */}
-              <div className="pt-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setSelectedFeature(null);
-                    handleNavigateToApp(false);
-                  }}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
-                >
-                  <span>Experience This Feature</span>
-                  <ExternalLink className="w-5 h-5" />
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      {/* Spacer to enable scroll */}
+      <div className="h-[600vh]" />
     </div>
   );
 }
