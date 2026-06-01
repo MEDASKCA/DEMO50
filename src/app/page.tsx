@@ -3,16 +3,19 @@
 import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { firestore, initFirebaseClient } from "../lib/firebase";
+import * as XLSX from "xlsx";
+import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { firestore, initFirebaseClient, storage } from "../lib/firebase";
 import styles from "./page.module.css";
 
 type ThemeKey = "light" | "dark";
 type RoleKey = "RN" | "ODP" | "HCA" | "Recovery" | "Ward";
 type CapacityState = "Bookable" | "Review" | "Constrained";
 type SessionKey = "AM" | "PM";
+type AppointmentType = "F2F" | "POA" | "Follow up";
 type ViewKey = "board" | "lists" | "specialties" | "procedures" | "blueprint";
 type StatusKey = "Pending" | "Confirmed" | "Blocked";
-type BoardPageKey = "day-surgery" | "outpatient";
+type BoardPageKey = "day-surgery" | "outpatient" | "ward" | "theatres" | "recovery" | "outpatients";
 type RotaTabKey = "pool" | "assignment";
 type BoardLayoutKey = "board" | "list";
 
@@ -52,6 +55,12 @@ type Resource = {
   sessionLengthMinutes: number;
 };
 
+type StaffBoardColumn = {
+  id: string;
+  label: string;
+  shortLabel: string;
+};
+
 type Booking = {
   id: string;
   resourceId: string;
@@ -59,6 +68,7 @@ type Booking = {
   session: SessionKey;
   consultant: string;
   specialtyId: string;
+  appointmentType: AppointmentType;
   procedureIds: string[];
   patientCount: number;
   nhsCount: number;
@@ -150,6 +160,7 @@ type BookingDraft = {
   resourceId: string;
   session: SessionKey;
   specialtyId: string;
+  appointmentType: AppointmentType;
   consultant: string;
   procedureIds: string[];
   nhsCount: string;
@@ -171,6 +182,23 @@ type RotaPoolRow = {
   fulfilment: string;
 };
 
+type RotaImportMeta = {
+  source: string;
+  startDate: string;
+  endDate: string;
+  unit: string;
+  fulfilment: string;
+  uploadedAt?: string;
+  storagePath?: string;
+  downloadUrl?: string;
+};
+
+type RotaImportRecord = {
+  id: string;
+  meta: RotaImportMeta;
+  rows: RotaPoolRow[];
+};
+
 type ConfirmDialogState = {
   message: string;
   confirmLabel?: string;
@@ -182,11 +210,31 @@ type StatusMenuState = {
   y: number;
 };
 
+type NoteComment = {
+  id: string;
+  author: string;
+  body: string;
+  createdAt: string;
+  likes: number;
+};
+
 const resources: Resource[] = [
   { id: "t1", label: "Theatre 1", shortLabel: "T1", type: "Theatre", sessionLengthMinutes: 300 },
   { id: "t2", label: "Theatre 2", shortLabel: "T2", type: "Theatre", sessionLengthMinutes: 300 },
   { id: "r1", label: "Room 1", shortLabel: "R1", type: "Room", sessionLengthMinutes: 240 },
+  { id: "clinic-1", label: "Clinic 1", shortLabel: "C1", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-2", label: "Clinic 2", shortLabel: "C2", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-3", label: "Clinic 3", shortLabel: "C3", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-4", label: "Clinic 4", shortLabel: "C4", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-5", label: "Clinic 5", shortLabel: "C5", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-6", label: "Clinic 6", shortLabel: "C6", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-7", label: "Clinic 7", shortLabel: "C7", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-8", label: "Clinic 8", shortLabel: "C8", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-9", label: "Clinic 9", shortLabel: "C9", type: "Clinic", sessionLengthMinutes: 240 },
+  { id: "clinic-10", label: "Clinic 10", shortLabel: "C10", type: "Clinic", sessionLengthMinutes: 240 },
 ];
+
+const theatreResources = resources.filter((resource) => resource.id === "t1" || resource.id === "t2" || resource.id === "r1");
 
 const sessions: SessionKey[] = ["AM", "PM"];
 
@@ -270,181 +318,13 @@ const initialSpecialties: Specialty[] = [
   },
 ];
 
-const initialProcedures: Procedure[] = [
-  { id: "facet-joint", specialtyId: "pain", name: "Facet Joint Injection", difficulty: "Low", estimatedMinutes: 35, arrivalLeadMinutes: 75 },
-  { id: "radiofrequency", specialtyId: "pain", name: "Radiofrequency Ablation", difficulty: "Medium", estimatedMinutes: 50, arrivalLeadMinutes: 90 },
-  { id: "lap-chole", specialtyId: "general", name: "Laparoscopic Cholecystectomy", difficulty: "High", estimatedMinutes: 70, arrivalLeadMinutes: 120 },
-  { id: "hernia", specialtyId: "general", name: "Hernia Repair", difficulty: "Medium", estimatedMinutes: 55, arrivalLeadMinutes: 100 },
-  { id: "gastroscopy", specialtyId: "endoscopy", name: "Gastroscopy", difficulty: "Low", estimatedMinutes: 30, arrivalLeadMinutes: 60 },
-  { id: "colonoscopy", specialtyId: "endoscopy", name: "Colonoscopy", difficulty: "Medium", estimatedMinutes: 45, arrivalLeadMinutes: 75 },
-  { id: "hysteroscopy", specialtyId: "gynae", name: "Hysteroscopy", difficulty: "Medium", estimatedMinutes: 40, arrivalLeadMinutes: 75 },
-];
+const initialProcedures: Procedure[] = [];
 
-const initialConsultants: Consultant[] = [
-  { id: "ghiazi-kamran", name: "GHIAZI, Kamran", lastName: "Ghiazi", firstName: "Kamran", specialtyId: "endoscopy", procedures: ["Gastroscopy", "Colonoscopy"], rnRequired: 1, odpRequired: 1, hcaRequired: 1 },
-  { id: "azaleakathleen-deborah", name: "AZALEAKATHLEEN, Deborah", lastName: "Azaleakathleen", firstName: "Deborah", specialtyId: "endoscopy", procedures: ["Upper GI Endoscopy"], rnRequired: 1, odpRequired: 1, hcaRequired: 1 },
-  { id: "mann-charlotte", name: "MANN, Charlotte", lastName: "Mann", firstName: "Charlotte", specialtyId: "pain", procedures: ["Pain Injections", "Radiofrequency"], rnRequired: 1, odpRequired: 1, hcaRequired: 1 },
-  { id: "ordman-rebecca", name: "ORDMAN, Rebecca", lastName: "Ordman", firstName: "Rebecca", specialtyId: "pain", procedures: ["Infusion", "Pain Procedures"], rnRequired: 1, odpRequired: 1, hcaRequired: 1 },
-  { id: "shah-ravi", name: "SHAH, Ravi", lastName: "Shah", firstName: "Ravi", specialtyId: "general", procedures: ["General Surgery Lists"], rnRequired: 2, odpRequired: 1, hcaRequired: 1 },
-];
+const initialConsultants: Consultant[] = [];
 
-const initialBookings: Booking[] = [
-  {
-    id: "b1",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "AM",
-    consultant: "AZALEAKATHLEEN, D",
-    specialtyId: "upper-gi",
-    procedureIds: ["gastroscopy", "gastroscopy", "gastroscopy"],
-    patientCount: 3,
-    nhsCount: 1,
-    ppCount: 2,
-    timeLabel: "08:00",
-    notes: "",
-    status: "Pending",
-  },
-  {
-    id: "b2",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "PM",
-    consultant: "AZALEAKATHLEEN, D",
-    specialtyId: "upper-gi",
-    procedureIds: ["gastroscopy", "gastroscopy", "gastroscopy"],
-    patientCount: 3,
-    nhsCount: 1,
-    ppCount: 2,
-    timeLabel: "08:00",
-    notes: "",
-    status: "Pending",
-  },
-  {
-    id: "b3",
-    resourceId: "t1",
-    date: "2026-05-26",
-    session: "AM",
-    consultant: "AZALEAKATHLEEN, D",
-    specialtyId: "upper-gi",
-    procedureIds: ["gastroscopy", "gastroscopy", "gastroscopy"],
-    patientCount: 3,
-    nhsCount: 1,
-    ppCount: 2,
-    timeLabel: "08:00",
-    notes: "",
-    status: "Pending",
-  },
-  {
-    id: "b4",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "AM",
-    consultant: "GHIAZI, K",
-    specialtyId: "upper-gi",
-    procedureIds: ["gastroscopy", "gastroscopy"],
-    patientCount: 2,
-    nhsCount: 1,
-    ppCount: 1,
-    timeLabel: "10:30",
-    notes: "",
-    status: "Pending",
-  },
-  {
-    id: "b5",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "PM",
-    consultant: "MANN, C",
-    specialtyId: "pain",
-    procedureIds: ["facet-joint", "radiofrequency"],
-    patientCount: 2,
-    nhsCount: 1,
-    ppCount: 1,
-    timeLabel: "14:00",
-    notes: "",
-    status: "Confirmed",
-  },
-  {
-    id: "b6",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "PM",
-    consultant: "ORDMAN, R",
-    specialtyId: "pain",
-    procedureIds: ["radiofrequency"],
-    patientCount: 1,
-    nhsCount: 0,
-    ppCount: 1,
-    timeLabel: "16:15",
-    notes: "",
-    status: "Pending",
-  },
-  {
-    id: "b7",
-    resourceId: "t2",
-    date: "2026-05-25",
-    session: "AM",
-    consultant: "SHAH, R",
-    specialtyId: "general",
-    procedureIds: ["hernia", "hernia"],
-    patientCount: 2,
-    nhsCount: 1,
-    ppCount: 1,
-    timeLabel: "09:15",
-    notes: "",
-    status: "Pending",
-  },
-];
+const initialBookings: Booking[] = [];
 
-const staffAssignments: StaffAssignment[] = [
-  {
-    id: "s1",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "AM",
-    lead: "Kathleen Azalea",
-    team: [
-      { role: "RN", name: "S. Francis" },
-      { role: "ODP", name: "J. Patel" },
-      { role: "HCA", name: "M. Lewis" },
-    ],
-  },
-  {
-    id: "s2",
-    resourceId: "t2",
-    date: "2026-05-25",
-    session: "AM",
-    lead: "R. Shah",
-    team: [
-      { role: "RN", name: "A. Khan" },
-      { role: "ODP", name: "T. Green" },
-      { role: "HCA", name: "L. Ward" },
-    ],
-  },
-  {
-    id: "s3",
-    resourceId: "r1",
-    date: "2026-05-25",
-    session: "AM",
-    lead: "Clinic Flow",
-    team: [
-      { role: "RN", name: "P. Scott" },
-      { role: "HCA", name: "D. Moore" },
-    ],
-  },
-  {
-    id: "s4",
-    resourceId: "t1",
-    date: "2026-05-25",
-    session: "PM",
-    lead: "C. Mann",
-    team: [
-      { role: "RN", name: "S. Francis" },
-      { role: "ODP", name: "R. Cole" },
-      { role: "HCA", name: "M. Lewis" },
-    ],
-  },
-];
+const staffAssignments: StaffAssignment[] = [];
 
 const defaultSpecialtyForm: SpecialtyFormState = {
   name: "",
@@ -475,13 +355,59 @@ const defaultConsultantForm = (specialtyId: string): ConsultantFormState => ({
 const navItems: Array<{ key: ViewKey; label: string; short: string }> = [
   { key: "board", label: "Sessions", short: "Sessions" },
   { key: "specialties", label: "Registry", short: "Registry" },
-  { key: "procedures", label: "Procedures", short: "Procs" },
+  { key: "procedures", label: "Notes", short: "Notes" },
   { key: "blueprint", label: "Rota", short: "Rota" },
 ];
 
-const boardPages: Array<{ key: BoardPageKey; label: string }> = [
+const sessionBoardPages: Array<{ key: BoardPageKey; label: string }> = [
   { key: "day-surgery", label: "Day Surgery" },
   { key: "outpatient", label: "Outpatient" },
+];
+
+const staffBoardPages: Array<{ key: BoardPageKey; label: string }> = [
+  { key: "ward", label: "Ward" },
+  { key: "theatres", label: "Theatres" },
+  { key: "recovery", label: "Recovery" },
+  { key: "outpatients", label: "Outpatients" },
+];
+
+const staffBoardConfigs: Record<"ward" | "theatres" | "recovery" | "outpatients", { columns: StaffBoardColumn[]; splitBySession: boolean }> = {
+  ward: {
+    splitBySession: false,
+    columns: [
+      { id: "ward-a", label: "Ward A", shortLabel: "WA" },
+      { id: "ward-b", label: "Ward B", shortLabel: "WB" },
+      { id: "ward-c", label: "Ward C", shortLabel: "WC" },
+    ],
+  },
+  theatres: {
+    splitBySession: true,
+    columns: theatreResources.map((resource) => ({ id: resource.id, label: resource.label, shortLabel: resource.shortLabel })),
+  },
+  recovery: {
+    splitBySession: false,
+    columns: [{ id: "recovery", label: "Recovery", shortLabel: "REC" }],
+  },
+  outpatients: {
+    splitBySession: false,
+    columns: [
+      { id: "clinics", label: "Clinics", shortLabel: "CLN" },
+      { id: "poa", label: "POA", shortLabel: "POA" },
+    ],
+  },
+};
+
+const outpatientBoardColumns: StaffBoardColumn[] = [
+  { id: "clinic-1", label: "Clinic 1", shortLabel: "C1" },
+  { id: "clinic-2", label: "Clinic 2", shortLabel: "C2" },
+  { id: "clinic-3", label: "Clinic 3", shortLabel: "C3" },
+  { id: "clinic-4", label: "Clinic 4", shortLabel: "C4" },
+  { id: "clinic-5", label: "Clinic 5", shortLabel: "C5" },
+  { id: "clinic-6", label: "Clinic 6", shortLabel: "C6" },
+  { id: "clinic-7", label: "Clinic 7", shortLabel: "C7" },
+  { id: "clinic-8", label: "Clinic 8", shortLabel: "C8" },
+  { id: "clinic-9", label: "Clinic 9", shortLabel: "C9" },
+  { id: "clinic-10", label: "Clinic 10", shortLabel: "C10" },
 ];
 
 const rotaTabs: Array<{ key: RotaTabKey; label: string }> = [
@@ -489,16 +415,85 @@ const rotaTabs: Array<{ key: RotaTabKey; label: string }> = [
   { key: "assignment", label: "Assignment" },
 ];
 
-const importedRotaPool: RotaPoolRow[] = [
-  { id: "rp1", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 18:00", classification: "Band 7 RN", name: "Monterubio, Alexander", fulfilment: "Substantive" },
-  { id: "rp2", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 16:00", classification: "Band 6 RN", name: "Jeetoo, Rafick", fulfilment: "Substantive" },
-  { id: "rp3", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 18:00", classification: "Band 6 ODP", name: "Gillam, Geraldine", fulfilment: "Substantive" },
-  { id: "rp4", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 18:00", classification: "Band 6 RN", name: "John, Sinimol", fulfilment: "Bank" },
-  { id: "rp5", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 18:00", classification: "Band 6 ODP", name: "Maciaszek, Anna", fulfilment: "Agency" },
-  { id: "rp6", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 18:00", classification: "Band 6 RN", name: "Raj, Jithin", fulfilment: "Substantive" },
-  { id: "rp7", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 20:00", classification: "Band 5 RN", name: "Gutsa, Grace", fulfilment: "Bank" },
-  { id: "rp8", date: "2026-06-01", unit: "HW Day Surgery", shift: "Day", shiftTime: "08:00 - 18:00", classification: "Band 3 HCA", name: "Powell, Teri", fulfilment: "Substantive" },
-];
+const importedRotaPool: RotaPoolRow[] = [];
+
+const ROTA_IMPORTS_STORAGE_KEY = "capacity-planner-rota-imports";
+const DEV_MODE_STORAGE_KEY = "capacity-planner-dev-mode";
+
+function sortRotaImports(records: RotaImportRecord[]) {
+  return [...records].sort((left, right) => {
+    const leftTime = left.meta.uploadedAt ? Date.parse(left.meta.uploadedAt) : 0;
+    const rightTime = right.meta.uploadedAt ? Date.parse(right.meta.uploadedAt) : 0;
+    return rightTime - leftTime;
+  });
+}
+
+function readStoredRotaImports() {
+  if (typeof window === "undefined") return [] as RotaImportRecord[];
+
+  try {
+    const raw = window.localStorage.getItem(ROTA_IMPORTS_STORAGE_KEY);
+    if (!raw) return [] as RotaImportRecord[];
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [] as RotaImportRecord[];
+
+    return parsed.filter(
+      (entry): entry is RotaImportRecord =>
+        Boolean(
+          entry &&
+            typeof entry === "object" &&
+            "id" in entry &&
+            "meta" in entry &&
+            "rows" in entry &&
+            Array.isArray((entry as RotaImportRecord).rows),
+        ),
+    );
+  } catch {
+    return [] as RotaImportRecord[];
+  }
+}
+
+function writeStoredRotaImports(records: RotaImportRecord[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(ROTA_IMPORTS_STORAGE_KEY, JSON.stringify(records));
+  } catch {
+    // Ignore local persistence failures and keep the in-memory import active.
+  }
+}
+
+function readStoredDevMode() {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return window.localStorage.getItem(DEV_MODE_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeStoredDevMode(enabled: boolean) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(DEV_MODE_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Ignore local persistence failures for dev mode.
+  }
+}
+
+const defaultRotaImportMeta: RotaImportMeta = {
+  source: "Daily Staffing Report - Landscape (1).xlsx",
+  startDate: "Monday 01 June 2026",
+  endDate: "Tuesday 30 June 2026",
+  unit: "HW Day Surgery",
+  fulfilment: "Substantive, Bank, Agency",
+  uploadedAt: "",
+};
+
+const appointmentTypes: AppointmentType[] = ["F2F", "POA", "Follow up"];
 
 function isoToLabel(date: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(
@@ -516,6 +511,14 @@ function toIsoDate(date: Date) {
 function addDays(isoDate: string, days: number) {
   const date = new Date(`${isoDate}T00:00:00`);
   date.setDate(date.getDate() + days);
+  return toIsoDate(date);
+}
+
+function startOfWeekIso(isoDate: string) {
+  const date = new Date(`${isoDate}T00:00:00`);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
   return toIsoDate(date);
 }
 
@@ -550,6 +553,195 @@ function monthDates(date: string) {
   }
 
   return dates;
+}
+
+function parseSearchTerms(input: string) {
+  const matches = Array.from(input.matchAll(/"([^"]+)"|(\S+)/g));
+  return matches
+    .map((match) => (match[1] ?? match[2] ?? "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function normalizeSheetCell(value: unknown) {
+  if (value == null) return "";
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function parseReportDateLabel(input: string) {
+  const match = input.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if (!match) return "";
+  const [, day, monthName, year] = match;
+  const monthMap: Record<string, string> = {
+    january: "01",
+    february: "02",
+    march: "03",
+    april: "04",
+    may: "05",
+    june: "06",
+    july: "07",
+    august: "08",
+    september: "09",
+    october: "10",
+    november: "11",
+    december: "12",
+  };
+  const month = monthMap[monthName.toLowerCase()];
+  if (!month) return "";
+  return `${year}-${month}-${String(Number(day)).padStart(2, "0")}`;
+}
+
+function longLabelFromIso(isoDate: string) {
+  if (!isoDate) return "";
+  return new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(
+    new Date(`${isoDate}T00:00:00`),
+  );
+}
+
+function dateTimeLabel(input: string) {
+  if (!input) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(input));
+}
+
+function inferRotaFulfilment(classification: string, existingFulfilment = "") {
+  const current = existingFulfilment.replace(/\s+/g, " ").trim();
+  if (current && !current.includes(",")) return current;
+
+  const normalized = classification.replace(/\s+/g, " ").trim().toUpperCase();
+  if (!normalized) return current || "Not specified";
+  if (/\bSP\b/.test(normalized)) return "Bank";
+  if (/^BAND\s+.+\b(RN|ODP|HCA)\b/.test(normalized)) return "Substantive";
+  if (/\b(RN|ODP|HCA)\b/.test(normalized) && !normalized.startsWith("BAND")) return "Bank";
+  return current && !current.includes(",") ? current : "Not specified";
+}
+
+function normalizeRotaRows(rows: RotaPoolRow[]) {
+  return rows.map((row) => ({
+    ...row,
+    fulfilment: inferRotaFulfilment(row.classification, row.fulfilment),
+  }));
+}
+
+function normalizeRotaImportRecord(record: RotaImportRecord): RotaImportRecord {
+  return {
+    ...record,
+    rows: normalizeRotaRows(record.rows),
+  };
+}
+
+function buildRotaImportFromWorkbook(buffer: ArrayBuffer, source: string): { rows: RotaPoolRow[]; meta: RotaImportMeta } {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames.includes("DailyStaffing") ? "DailyStaffing" : workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const matrix = (XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" }) as unknown[][]).map((row) =>
+    row.map(normalizeSheetCell),
+  );
+
+  const findLabelValue = (label: string) => {
+    for (const row of matrix) {
+      const index = row.findIndex((cell) => cell.toLowerCase() === label.toLowerCase());
+      if (index >= 0) return row[index + 1] ?? "";
+      const joined = row.join(" ");
+      const inlineMatch = joined.match(new RegExp(`${label}\\s*:?[\\s]+(.+)$`, "i"));
+      if (inlineMatch) return inlineMatch[1].trim();
+    }
+    return "";
+  };
+
+  const startDateRaw = findLabelValue("Start Date") || findLabelValue("Start Date:");
+  const endDateRaw = findLabelValue("End Date") || findLabelValue("End Date:");
+  const unitRaw = findLabelValue("Unit") || findLabelValue("Unit:");
+  const fulfilmentRaw = findLabelValue("Fulfilment Type") || findLabelValue("Fulfilment") || findLabelValue("Fulfilment Type:");
+  const normalizedSummaryFulfilment = fulfilmentRaw.replace(/\s+/g, " ").trim();
+
+  let currentDate = "";
+  let currentUnit = unitRaw || "Unknown unit";
+  let currentFulfilment = "";
+  let headerIndexes: { shift?: number; shiftTime?: number; classification?: number; name?: number; fulfilment?: number } | null = null;
+  const parsedRows: RotaPoolRow[] = [];
+
+  matrix.forEach((row, rowIndex) => {
+    const joined = row.join(" ").trim();
+    if (!joined) return;
+
+    if (/day and date/i.test(joined)) {
+      currentDate = parseReportDateLabel(joined);
+      headerIndexes = null;
+      return;
+    }
+
+    if (/^unit[:\s]/i.test(joined)) {
+      const nextUnit = joined.replace(/^unit[:\s]*/i, "").trim();
+      if (nextUnit) currentUnit = nextUnit;
+      return;
+    }
+
+    if (/^(substantive|bank|agency)$/i.test(joined)) {
+      currentFulfilment = joined.replace(/\s+/g, " ").trim();
+      return;
+    }
+
+    const lowered = row.map((cell) => cell.toLowerCase());
+    if (lowered.includes("shift time") && lowered.includes("classification") && lowered.includes("name")) {
+      headerIndexes = {
+        shift: lowered.indexOf("shift"),
+        shiftTime: lowered.indexOf("shift time"),
+        classification: lowered.indexOf("classification"),
+        name: lowered.indexOf("name"),
+        fulfilment: lowered.findIndex((cell) => cell.includes("fulfilment")),
+      };
+      return;
+    }
+
+    if (!currentDate || !headerIndexes || headerIndexes.shiftTime == null || headerIndexes.classification == null || headerIndexes.name == null) return;
+
+    const shift = row[headerIndexes.shift ?? -1] ?? "";
+    const shiftTime = row[headerIndexes.shiftTime] ?? "";
+    const classification = row[headerIndexes.classification] ?? "";
+    const name = row[headerIndexes.name] ?? "";
+    const fulfilment = headerIndexes.fulfilment != null && headerIndexes.fulfilment >= 0 ? row[headerIndexes.fulfilment] ?? "" : "";
+
+    const looksLikeStaffRow =
+      Boolean(currentDate) &&
+      Boolean(name) &&
+      Boolean(classification) &&
+      /\d{2}:\d{2}/.test(shiftTime) &&
+      !/classification|name|shift time/i.test(joined);
+
+    if (!looksLikeStaffRow) return;
+
+    parsedRows.push({
+      id: `rota-${rowIndex}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      date: currentDate,
+      unit: currentUnit.split(" - ")[0] || currentUnit,
+      shift: shift || "Day",
+      shiftTime,
+      classification,
+      name,
+      fulfilment: inferRotaFulfilment(classification, fulfilment || currentFulfilment || normalizedSummaryFulfilment),
+    });
+  });
+
+  const uniqueFulfilment = Array.from(new Set(parsedRows.map((row) => row.fulfilment).filter(Boolean)));
+  const uploadedAt = new Date().toISOString();
+  const meta: RotaImportMeta = {
+    source,
+    startDate: startDateRaw || longLabelFromIso(parsedRows[0]?.date ?? ""),
+    endDate: endDateRaw || longLabelFromIso(parsedRows[parsedRows.length - 1]?.date ?? ""),
+    unit: (unitRaw || parsedRows[0]?.unit || "Unknown unit").split(" - ")[0],
+    fulfilment: uniqueFulfilment.join(", ") || fulfilmentRaw || "Unknown",
+    uploadedAt,
+  };
+
+  return {
+    rows: parsedRows.sort((left, right) => `${left.date}-${left.name}`.localeCompare(`${right.date}-${right.name}`)),
+    meta,
+  };
 }
 
 function minutesToClock(totalMinutes: number) {
@@ -647,6 +839,7 @@ function getDraftSnapshot(draft: BookingDraft) {
     resourceId: draft.resourceId,
     session: draft.session,
     specialtyId: draft.specialtyId,
+    appointmentType: draft.appointmentType,
     consultant: draft.consultant,
     procedureIds: draft.procedureIds,
     nhsCount: draft.nhsCount,
@@ -674,7 +867,10 @@ export default function Home() {
   const [activeFulfilmentFilter, setActiveFulfilmentFilter] = useState("");
   const [activeDateFilter, setActiveDateFilter] = useState("");
   const [activeUnitFilter, setActiveUnitFilter] = useState("");
-  const [uploadedRotaFileName, setUploadedRotaFileName] = useState("Daily Staffing Report - Landscape (1).xlsx");
+  const [rotaImportMeta, setRotaImportMeta] = useState<RotaImportMeta>(defaultRotaImportMeta);
+  const [rotaPoolRows, setRotaPoolRows] = useState<RotaPoolRow[]>(importedRotaPool);
+  const [rotaImportHistory, setRotaImportHistory] = useState<RotaImportRecord[]>([]);
+  const [rotaArchiveOpen, setRotaArchiveOpen] = useState(false);
   const [weekStart, setWeekStart] = useState("2026-05-25");
   const [listDateFrom, setListDateFrom] = useState("2026-05-25");
   const [listDateTo, setListDateTo] = useState("2026-05-29");
@@ -682,11 +878,25 @@ export default function Home() {
   const [listSpecialtyFilter, setListSpecialtyFilter] = useState("");
   const [listResourceFilter, setListResourceFilter] = useState("");
   const [staffAssignmentFilter, setStaffAssignmentFilter] = useState("");
+  const [todayIso, setTodayIso] = useState(() => toIsoDate(new Date()));
   const [expandedBoardListSections, setExpandedBoardListSections] = useState<string[]>([]);
   const [specialties, setSpecialties] = useState(initialSpecialties);
   const [consultants, setConsultants] = useState(initialConsultants);
   const [procedures, setProcedures] = useState(initialProcedures);
   const [bookings, setBookings] = useState(initialBookings);
+  useEffect(() => {
+    const storedImports = sortRotaImports(readStoredRotaImports().map(normalizeRotaImportRecord));
+    if (storedImports.length === 0) return;
+
+    setRotaImportHistory(storedImports);
+    setRotaImportMeta(storedImports[0].meta);
+    setRotaPoolRows(storedImports[0].rows);
+  }, []);
+
+  useEffect(() => {
+    if (rotaImportHistory.length === 0) return;
+    writeStoredRotaImports(sortRotaImports(rotaImportHistory).map(normalizeRotaImportRecord));
+  }, [rotaImportHistory]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [specialtyForm, setSpecialtyForm] = useState(defaultSpecialtyForm);
   const [consultantForm, setConsultantForm] = useState<ConsultantFormState>(defaultConsultantForm(initialSpecialties[0].id));
@@ -712,6 +922,7 @@ export default function Home() {
     resourceId: resources[0].id,
     session: "AM",
     specialtyId: initialSpecialties[0].id,
+    appointmentType: "F2F",
     consultant: "",
     procedureIds: [],
     nhsCount: "0",
@@ -725,18 +936,119 @@ export default function Home() {
   const [resourceEditOpen, setResourceEditOpen] = useState(false);
   const [statusMenu, setStatusMenu] = useState<StatusMenuState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [notesSearch, setNotesSearch] = useState("");
+  const [expandedNoteIds, setExpandedNoteIds] = useState<string[]>([]);
+  const [noteLikes, setNoteLikes] = useState<Record<string, number>>({});
+  const [noteLiked, setNoteLiked] = useState<Record<string, boolean>>({});
+  const [noteComments, setNoteComments] = useState<Record<string, NoteComment[]>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [devMode, setDevMode] = useState(false);
+  const [brandTapCount, setBrandTapCount] = useState(0);
   const confirmActionRef = useRef<null | (() => void | Promise<void>)>(null);
   const longPressTimerRef = useRef<number | null>(null);
+  const brandTapTimerRef = useRef<number | null>(null);
 
   const procedureMap = useMemo(
     () => Object.fromEntries(procedures.map((procedure) => [procedure.id, procedure])),
     [procedures],
   );
 
+  useEffect(() => {
+    setTodayIso(toIsoDate(new Date()));
+  }, []);
+
+  useEffect(() => {
+    const fallbackSpecialtyId = specialties[0]?.id ?? "";
+
+    setConsultantForm((current) =>
+      current.specialtyId && specialties.some((specialty) => specialty.id === current.specialtyId)
+        ? current
+        : { ...current, specialtyId: fallbackSpecialtyId },
+    );
+    setProcedureForm((current) =>
+      current.specialtyId && specialties.some((specialty) => specialty.id === current.specialtyId)
+        ? current
+        : { ...current, specialtyId: fallbackSpecialtyId },
+    );
+    setDraft((current) =>
+      current.specialtyId && specialties.some((specialty) => specialty.id === current.specialtyId)
+        ? current
+        : { ...current, specialtyId: fallbackSpecialtyId },
+    );
+  }, [specialties]);
+
   const specialtyMap = useMemo(
     () => Object.fromEntries(specialties.map((specialty) => [specialty.id, specialty])),
     [specialties],
   );
+
+  const notesSearchTerms = useMemo(() => parseSearchTerms(notesSearch), [notesSearch]);
+
+  const notesFeed = useMemo(() => {
+    const visible = [...bookings]
+      .sort((left, right) => {
+        const leftStamp = `${left.date}-${left.timeLabel}`;
+        const rightStamp = `${right.date}-${right.timeLabel}`;
+        return leftStamp < rightStamp ? 1 : -1;
+      })
+      .map((booking) => {
+        const comments = noteComments[booking.id] ?? [];
+        const searchBlob = [
+          booking.consultant,
+          specialtyMap[booking.specialtyId]?.name ?? "",
+          isoToLabel(booking.date),
+          booking.session,
+          booking.notes,
+          comments.map((comment) => `${comment.author} ${comment.body}`).join(" "),
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        return {
+          booking,
+          comments,
+          searchBlob,
+        };
+      });
+
+    if (notesSearchTerms.length === 0) return visible;
+    return visible.filter((item) => notesSearchTerms.every((term) => item.searchBlob.includes(term)));
+  }, [bookings, noteComments, notesSearchTerms, specialtyMap]);
+
+  const noteGroups = useMemo(() => {
+    const currentWeekStart = startOfWeekIso(todayIso);
+    const nextWeekStart = addDays(currentWeekStart, 7);
+    const weekAfterNextStart = addDays(currentWeekStart, 14);
+
+    const groups: Array<{ key: "week-a" | "week-b" | "archive"; label: string; items: typeof notesFeed }> = [
+      { key: "week-a", label: "Week A", items: [] },
+      { key: "week-b", label: "Week B", items: [] },
+      { key: "archive", label: "Archive", items: [] },
+    ];
+
+    notesFeed.forEach((item) => {
+      const bookingWeekStart = startOfWeekIso(item.booking.date);
+
+      if (item.booking.date < todayIso) {
+        groups[2].items.push(item);
+        return;
+      }
+
+      if (bookingWeekStart <= nextWeekStart) {
+        groups[0].items.push(item);
+        return;
+      }
+
+      if (bookingWeekStart <= weekAfterNextStart) {
+        groups[1].items.push(item);
+        return;
+      }
+
+      groups[1].items.push(item);
+    });
+
+    return groups;
+  }, [notesFeed, todayIso]);
 
   const dates = useMemo(
     () => Array.from({ length: 5 }, (_, index) => addDays(weekStart, index)),
@@ -793,14 +1105,21 @@ export default function Home() {
   }, [bookings, procedureMap, specialtyMap]);
 
   const visibleBoardBookings = useMemo(
-    () => (activeBoardPage === "day-surgery" ? bookingSummaries : []),
+    () => (activeBoardPage === "day-surgery" || activeBoardPage === "outpatient" ? bookingSummaries : []),
     [activeBoardPage, bookingSummaries],
   );
 
   const visibleStaffAssignments = useMemo(
-    () => (activeBoardPage === "day-surgery" ? staffAssignments : []),
-    [activeBoardPage],
+    () => (staffView ? staffAssignments : []),
+    [staffView],
   );
+
+  const currentBoardPages = staffView ? staffBoardPages : sessionBoardPages;
+  const activeStaffBoardPage =
+    activeBoardPage === "ward" || activeBoardPage === "theatres" || activeBoardPage === "recovery" || activeBoardPage === "outpatients"
+      ? activeBoardPage
+      : "theatres";
+  const currentStaffBoardConfig = staffBoardConfigs[activeStaffBoardPage];
 
 
   const boardDays = useMemo(() => {
@@ -808,7 +1127,7 @@ export default function Home() {
       date,
       slots: sessions.map((session) => ({
         session,
-        resources: resources.map((resource) => ({
+        resources: theatreResources.map((resource) => ({
           resource,
           bookings: visibleBoardBookings
             .filter((item) => item.date === date && item.resourceId === resource.id && item.session === session)
@@ -821,38 +1140,82 @@ export default function Home() {
     }));
   }, [dates, visibleBoardBookings, visibleStaffAssignments]);
 
+  const outpatientBoardDays = useMemo(() => {
+    return dates.map((date) => ({
+      date,
+      columns: outpatientBoardColumns.map((column) => ({
+        column,
+        bookings: visibleBoardBookings
+          .filter((item) => item.date === date && item.resourceId === column.id)
+          .sort((left, right) => left.timeLabel.localeCompare(right.timeLabel)),
+      })),
+    }));
+  }, [dates, visibleBoardBookings]);
+
+  const staffBoardDays = useMemo(() => {
+    if (!staffView) return [];
+
+    if (currentStaffBoardConfig.splitBySession) {
+      return dates.map((date) => ({
+        date,
+        rows: sessions.map((session) => ({
+          session,
+          columns: currentStaffBoardConfig.columns.map((column) => ({
+            column,
+            assignment: visibleStaffAssignments.find(
+              (item) => item.date === date && item.resourceId === column.id && item.session === session,
+            ),
+          })),
+        })),
+      }));
+    }
+
+    return dates.map((date) => ({
+      date,
+      rows: [
+        {
+          session: null,
+          columns: currentStaffBoardConfig.columns.map((column) => ({
+            column,
+            assignment: visibleStaffAssignments.find((item) => item.date === date && item.resourceId === column.id),
+          })),
+        },
+      ],
+    }));
+  }, [currentStaffBoardConfig, dates, staffView, visibleStaffAssignments]);
+
   const rotaPoolSummary = useMemo(() => {
-    const grouped = importedRotaPool.reduce<Record<string, number>>((acc, row) => {
+    const grouped = rotaPoolRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.classification] = (acc[row.classification] ?? 0) + 1;
       return acc;
     }, {});
     return Object.entries(grouped).sort((left, right) => right[1] - left[1]);
-  }, []);
+  }, [rotaPoolRows]);
 
   const rotaFulfilmentSummary = useMemo(() => {
-    const grouped = importedRotaPool.reduce<Record<string, number>>((acc, row) => {
+    const grouped = rotaPoolRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.fulfilment] = (acc[row.fulfilment] ?? 0) + 1;
       return acc;
     }, {});
     return Object.entries(grouped).sort((left, right) => right[1] - left[1]);
-  }, []);
+  }, [rotaPoolRows]);
 
   const filteredRotaPool = useMemo(
     () =>
-      importedRotaPool.filter((row) => {
+      rotaPoolRows.filter((row) => {
         const roleOk = activeRoleFilter ? row.classification === activeRoleFilter : true;
         const fulfilmentOk = activeFulfilmentFilter ? row.fulfilment === activeFulfilmentFilter : true;
         const dateOk = activeDateFilter ? row.date === activeDateFilter : true;
         const unitOk = activeUnitFilter ? row.unit === activeUnitFilter : true;
         return roleOk && fulfilmentOk && dateOk && unitOk;
       }),
-    [activeDateFilter, activeFulfilmentFilter, activeRoleFilter, activeUnitFilter],
+    [activeDateFilter, activeFulfilmentFilter, activeRoleFilter, activeUnitFilter, rotaPoolRows],
   );
 
-  const rotaRoleOptions = useMemo(() => Array.from(new Set(importedRotaPool.map((row) => row.classification))), []);
-  const rotaFulfilmentOptions = useMemo(() => Array.from(new Set(importedRotaPool.map((row) => row.fulfilment))), []);
-  const rotaDateOptions = useMemo(() => Array.from(new Set(importedRotaPool.map((row) => row.date))), []);
-  const rotaUnitOptions = useMemo(() => Array.from(new Set(importedRotaPool.map((row) => row.unit))), []);
+  const rotaRoleOptions = useMemo(() => Array.from(new Set(rotaPoolRows.map((row) => row.classification))), [rotaPoolRows]);
+  const rotaFulfilmentOptions = useMemo(() => Array.from(new Set(rotaPoolRows.map((row) => row.fulfilment))), [rotaPoolRows]);
+  const rotaDateOptions = useMemo(() => Array.from(new Set(rotaPoolRows.map((row) => row.date))).sort(), [rotaPoolRows]);
+  const rotaUnitOptions = useMemo(() => Array.from(new Set(rotaPoolRows.map((row) => row.unit))), [rotaPoolRows]);
   const rotaMonthAnchor = activeDateFilter || rotaDateOptions[0] || toIsoDate(new Date());
   const rotaMonthDates = useMemo(() => monthDates(rotaMonthAnchor), [rotaMonthAnchor]);
 
@@ -919,6 +1282,8 @@ export default function Home() {
     () => draftSpecialtyConsultants.find((consultant) => consultant.name === draft.consultant),
     [draft.consultant, draftSpecialtyConsultants],
   );
+  const isOutpatientDraft = draft.resourceId.startsWith("clinic-");
+  const outpatientSpecialtyValue = `${draft.specialtyId}::${draft.appointmentType}`;
   const draftAvailableProcedures = useMemo(() => {
     if (!selectedDraftConsultant || selectedDraftConsultant.procedures.length === 0) return draftSpecialtyProcedures;
     const allowed = new Set(selectedDraftConsultant.procedures.map((item) => item.toLowerCase()));
@@ -1003,6 +1368,12 @@ export default function Home() {
     () => (activeBoardPage === "day-surgery" ? visibleListBookings : []),
     [activeBoardPage, visibleListBookings],
   );
+  useEffect(() => {
+    setActiveBoardPage((current) => {
+      if (staffView) return current === "ward" || current === "theatres" || current === "recovery" || current === "outpatients" ? current : "theatres";
+      return current === "day-surgery" || current === "outpatient" ? current : "day-surgery";
+    });
+  }, [staffView]);
 
   useEffect(() => {
     if (activeView === "lists") {
@@ -1018,11 +1389,12 @@ export default function Home() {
 
     async function loadPlannerData() {
       try {
-        const [specialtySnapshot, consultantSnapshot, procedureSnapshot, bookingSnapshot] = await Promise.all([
+        const [specialtySnapshot, consultantSnapshot, procedureSnapshot, bookingSnapshot, rotaImportSnapshot] = await Promise.all([
           getDocs(collection(firestore, "specialties")),
           getDocs(collection(firestore, "consultants")),
           getDocs(collection(firestore, "procedures")),
           getDocs(collection(firestore, "bookings")),
+          getDocs(collection(firestore, "rotaImports")),
         ]);
 
         if (cancelled) return;
@@ -1057,6 +1429,16 @@ export default function Home() {
         if (!bookingSnapshot.empty) {
           setBookings(bookingSnapshot.docs.map((snapshot) => snapshot.data() as Booking));
         }
+
+        if (!rotaImportSnapshot.empty) {
+          const imports = rotaImportSnapshot.docs.map((snapshot) => normalizeRotaImportRecord(snapshot.data() as RotaImportRecord));
+          const ordered = imports.sort((left, right) => (right.meta.uploadedAt ?? "").localeCompare(left.meta.uploadedAt ?? ""));
+          setRotaImportHistory(ordered);
+          if (ordered[0]) {
+            setRotaImportMeta(ordered[0].meta);
+            setRotaPoolRows(ordered[0].rows);
+          }
+        }
         setFirestoreAccess("granted");
       } catch (error) {
         if (typeof error === "object" && error && "code" in error && error.code === "permission-denied") {
@@ -1082,10 +1464,12 @@ export default function Home() {
       .join("  ");
   }
 
-  function openDrawerForSlot(date: string, resourceId: string, session: SessionKey, bookingId?: string) {
+  function openDrawerForSlot(date: string, resourceId: string, session: SessionKey, bookingId?: string, preferExisting = true) {
       const existing = bookingId
         ? bookings.find((item) => item.id === bookingId)
-        : bookings.find((item) => item.date === date && item.resourceId === resourceId && item.session === session);
+        : preferExisting
+          ? bookings.find((item) => item.date === date && item.resourceId === resourceId && item.session === session)
+          : undefined;
 
       let nextDraft: BookingDraft;
 
@@ -1095,8 +1479,9 @@ export default function Home() {
           date: existing.date,
           resourceId: existing.resourceId,
           session: existing.session,
-        specialtyId: existing.specialtyId,
-        consultant: existing.consultant,
+          specialtyId: existing.specialtyId,
+          appointmentType: existing.appointmentType ?? "F2F",
+          consultant: existing.consultant,
           procedureIds: existing.procedureIds,
           nhsCount: String(existing.nhsCount),
           ppCount: String(existing.ppCount),
@@ -1111,6 +1496,7 @@ export default function Home() {
           resourceId,
           session,
           specialtyId: specialties[0]?.id ?? "",
+          appointmentType: "F2F",
           consultant: "",
           procedureIds: [],
           nhsCount: "0",
@@ -1127,6 +1513,12 @@ export default function Home() {
       setResourceEditOpen(false);
       setDrawerOpen(true);
     }
+
+  function openQuickBooking() {
+    const defaultDate = dates[0] ?? todayIso;
+    const defaultResourceId = activeBoardPage === "outpatient" ? "clinic-1" : "t1";
+    openDrawerForSlot(defaultDate, defaultResourceId, "AM", undefined, false);
+  }
 
   function closeDrawer(force = false) {
     if (!force && drawerOpen && getDraftSnapshot(draft) !== openedDraftSnapshot) {
@@ -1147,6 +1539,26 @@ export default function Home() {
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  }
+
+  function handleBrandTap() {
+    if (brandTapTimerRef.current !== null) {
+      window.clearTimeout(brandTapTimerRef.current);
+    }
+
+    setBrandTapCount((current) => {
+      const next = current + 1;
+      if (next >= 10) {
+        setDevMode(true);
+        return 0;
+      }
+      return next;
+    });
+
+    brandTapTimerRef.current = window.setTimeout(() => {
+      setBrandTapCount(0);
+      brandTapTimerRef.current = null;
+    }, 1200);
   }
 
   function openStatusMenu(bookingId: string, element: HTMLElement) {
@@ -1241,6 +1653,7 @@ export default function Home() {
       resourceId: draft.resourceId,
       session: draft.session,
       specialtyId: draft.specialtyId,
+      appointmentType: draft.appointmentType,
       consultant: draft.consultant || "UNASSIGNED",
       procedureIds: draft.procedureIds,
       patientCount: Number(draft.nhsCount) + Number(draft.ppCount),
@@ -1298,10 +1711,19 @@ export default function Home() {
   async function handleSpecialtySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const trimmedName = specialtyForm.name.trim();
+    if (!trimmedName) return;
+
+    const nextId = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    if (specialties.some((specialty) => specialty.id === nextId || specialty.name.toLowerCase() === trimmedName.toLowerCase())) {
+      setSpecialtyForm(defaultSpecialtyForm);
+      return;
+    }
+
     const next: Specialty = {
-      id: specialtyForm.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      name: specialtyForm.name,
-      listLabel: specialtyForm.listLabel,
+      id: nextId,
+      name: trimmedName,
+      listLabel: trimmedName,
       difficulty: specialtyForm.difficulty,
       targetPoints: Number(specialtyForm.targetPoints),
       turnaroundMinutes: Number(specialtyForm.turnaroundMinutes),
@@ -1318,6 +1740,7 @@ export default function Home() {
 
     setSpecialties((current) => [...current, next]);
     setProcedureForm((current) => ({ ...current, specialtyId: next.id }));
+    setExpandedSpecialtyIds((current) => (current.includes(next.id) ? current : [...current, next.id]));
     setSpecialtyForm(defaultSpecialtyForm);
 
     if (firestoreAccess !== "blocked") {
@@ -1332,6 +1755,48 @@ export default function Home() {
         }
       }
     }
+  }
+
+  async function deleteSpecialty(specialtyId: string) {
+    const specialty = specialties.find((item) => item.id === specialtyId);
+    if (!specialty) return;
+
+    requestConfirmation(`Delete specialty "${specialty.name}"?`, async () => {
+      const consultantsToDelete = consultants.filter((consultant) => consultant.specialtyId === specialtyId);
+      const proceduresToDelete = procedures.filter((procedure) => procedure.specialtyId === specialtyId);
+      const remainingSpecialties = specialties.filter((item) => item.id !== specialtyId);
+      const fallbackSpecialtyId = remainingSpecialties[0]?.id ?? "";
+
+      setSpecialties(remainingSpecialties);
+      setConsultants((current) => current.filter((consultant) => consultant.specialtyId !== specialtyId));
+      setProcedures((current) => current.filter((procedure) => procedure.specialtyId !== specialtyId));
+      setExpandedSpecialtyIds((current) => current.filter((item) => item !== specialtyId));
+      setAddingSpecialtyId((current) => (current === specialtyId ? "" : current));
+      setExpandedConsultantId((current) => (consultantsToDelete.some((consultant) => consultant.id === current) ? "" : current));
+      setEditingConsultantId((current) => (consultantsToDelete.some((consultant) => consultant.id === current) ? "" : current));
+      setExpandedProcedureConsultantId((current) => (consultantsToDelete.some((consultant) => consultant.id === current) ? "" : current));
+      setConsultantEditDraft((current) => (current && current.specialtyId === specialtyId ? null : current));
+      setConsultantForm((current) => ({ ...current, specialtyId: fallbackSpecialtyId }));
+      setProcedureForm((current) => ({ ...current, specialtyId: fallbackSpecialtyId }));
+      setDraft((current) => ({ ...current, specialtyId: fallbackSpecialtyId }));
+
+      if (firestoreAccess !== "blocked") {
+        try {
+          await deleteDoc(doc(firestore, "specialties", specialtyId));
+          await Promise.all([
+            ...consultantsToDelete.map((consultant) => deleteDoc(doc(firestore, "consultants", consultant.id))),
+            ...proceduresToDelete.map((procedure) => deleteDoc(doc(firestore, "procedures", procedure.id))),
+          ]);
+          setFirestoreAccess("granted");
+        } catch (error) {
+          if (typeof error === "object" && error && "code" in error && error.code === "permission-denied") {
+            setFirestoreAccess("blocked");
+          } else {
+            console.error("Failed to delete specialty.", error);
+          }
+        }
+      }
+    }, "Delete");
   }
 
   async function handleProcedureSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1621,6 +2086,144 @@ export default function Home() {
     }
   }
 
+  function toggleNoteExpanded(bookingId: string) {
+    setExpandedNoteIds((current) => (current.includes(bookingId) ? current.filter((id) => id !== bookingId) : [...current, bookingId]));
+  }
+
+  function toggleNoteLike(bookingId: string) {
+    const nextLiked = !noteLiked[bookingId];
+    setNoteLiked((current) => ({ ...current, [bookingId]: nextLiked }));
+    setNoteLikes((current) => ({ ...current, [bookingId]: Math.max(0, (current[bookingId] ?? 0) + (nextLiked ? 1 : -1)) }));
+  }
+
+  function addNoteComment(bookingId: string) {
+    const draftText = (commentDrafts[bookingId] ?? "").trim();
+    if (!draftText) return;
+
+    const nextComment: NoteComment = {
+      id: `${bookingId}-${Date.now()}`,
+      author: "Coordinator",
+      body: draftText,
+      createdAt: new Date().toISOString(),
+      likes: 0,
+    };
+
+    setNoteComments((current) => ({
+      ...current,
+      [bookingId]: [...(current[bookingId] ?? []), nextComment],
+    }));
+    setCommentDrafts((current) => ({ ...current, [bookingId]: "" }));
+  }
+
+  function toggleCommentLike(bookingId: string, commentId: string) {
+    setNoteComments((current) => ({
+      ...current,
+      [bookingId]: (current[bookingId] ?? []).map((comment) =>
+        comment.id === commentId ? { ...comment, likes: comment.likes + 1 } : comment,
+      ),
+    }));
+  }
+
+  async function handleRotaUpload(file: File) {
+    const buffer = await file.arrayBuffer();
+    const parsed = buildRotaImportFromWorkbook(buffer, file.name);
+    if (parsed.rows.length === 0) return;
+
+    const normalizedRows = normalizeRotaRows(parsed.rows);
+    setRotaImportMeta(parsed.meta);
+    setRotaPoolRows(normalizedRows);
+    const localRecord: RotaImportRecord = {
+      id: `${Date.now()}`,
+      meta: parsed.meta,
+      rows: normalizedRows,
+    };
+    setRotaImportHistory((current) => [localRecord, ...current].sort((left, right) => (right.meta.uploadedAt ?? "").localeCompare(left.meta.uploadedAt ?? "")));
+    setActiveRoleFilter("");
+    setActiveFulfilmentFilter("");
+    setActiveDateFilter("");
+    setActiveUnitFilter("");
+
+    if (firestoreAccess !== "blocked") {
+      try {
+        const uploadId = `${Date.now()}-${file.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+        let storagePath = "";
+        let downloadUrl = "";
+
+        try {
+          storagePath = `rota-imports/${uploadId}/${file.name}`;
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, file, {
+            contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+          downloadUrl = await getDownloadURL(storageRef);
+        } catch (error) {
+          console.error("Failed to upload rota file to storage.", error);
+        }
+
+        const record: RotaImportRecord = {
+          id: uploadId,
+          meta: {
+            ...parsed.meta,
+            storagePath,
+            downloadUrl,
+          },
+          rows: normalizedRows,
+        };
+
+        await setDoc(doc(firestore, "rotaImports", uploadId), record);
+        setRotaImportMeta(record.meta);
+        setRotaImportHistory((current) => [record, ...current.filter((item) => item.id !== uploadId)].sort((left, right) => (right.meta.uploadedAt ?? "").localeCompare(left.meta.uploadedAt ?? "")));
+        setFirestoreAccess("granted");
+      } catch (error) {
+        if (typeof error === "object" && error && "code" in error && error.code === "permission-denied") {
+          setFirestoreAccess("blocked");
+        } else {
+          console.error("Failed to archive rota import.", error);
+        }
+      }
+    }
+  }
+
+  async function deleteRotaImport(importId: string) {
+    requestConfirmation("Delete this archived rota upload?", async () => {
+      const currentHistory = sortRotaImports(rotaImportHistory);
+      const target = currentHistory.find((item) => item.id === importId);
+      if (!target) return;
+
+      const nextHistory = sortRotaImports(currentHistory.filter((item) => item.id !== importId));
+      setRotaImportHistory(nextHistory);
+
+      if (nextHistory.length > 0) {
+        setRotaImportMeta(nextHistory[0].meta);
+        setRotaPoolRows(nextHistory[0].rows);
+      } else {
+        setRotaImportMeta(defaultRotaImportMeta);
+        setRotaPoolRows([]);
+      }
+
+      if (firestoreAccess !== "blocked") {
+        try {
+          if (target.meta.storagePath) {
+            try {
+              await deleteObject(ref(storage, target.meta.storagePath));
+            } catch (error) {
+              console.error("Failed to delete rota file from storage.", error);
+            }
+          }
+
+          await deleteDoc(doc(firestore, "rotaImports", importId));
+          setFirestoreAccess("granted");
+        } catch (error) {
+          if (typeof error === "object" && error && "code" in error && error.code === "permission-denied") {
+            setFirestoreAccess("blocked");
+          } else {
+            console.error("Failed to delete archived rota import.", error);
+          }
+        }
+      }
+    }, "Delete");
+  }
+
   const visibleBoardStaffAssignments = dates.flatMap((date) =>
     sessions.flatMap((session) =>
       resources
@@ -1699,12 +2302,19 @@ export default function Home() {
         {activeView === "board" ? (
           <header className={`${styles.mobileFixedHeader} ${styles.mobileBoardHeader}`}>
             <Image src="/rfppu-mark.png" alt="" width={44} height={44} className={styles.logoMark} priority />
+            <div className={styles.brandTapTarget} onClick={handleBrandTap} role="button" tabIndex={0} onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleBrandTap();
+              }
+            }}>
             <div className={styles.boardTitles}>
               <div className={styles.titleStack}>
                 <strong>The Royal Free London</strong>
                 <strong>Private Patients Unit</strong>
               </div>
               <span>Hadley Wood Hospital</span>
+            </div>
             </div>
             <div className={styles.themeToggle}>
               <button
@@ -1728,12 +2338,19 @@ export default function Home() {
         ) : (
           <header className={`${styles.mobileFixedHeader} ${styles.pageHeader}`}>
             <Image src="/rfppu-mark.png" alt="" width={44} height={44} className={styles.logoMark} priority />
+            <div className={styles.brandTapTarget} onClick={handleBrandTap} role="button" tabIndex={0} onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleBrandTap();
+              }
+            }}>
             <div className={styles.boardTitles}>
               <div className={styles.titleStack}>
                 <strong>The Royal Free London</strong>
                 <strong>Private Patients Unit</strong>
               </div>
               <span>Hadley Wood Hospital</span>
+            </div>
             </div>
             <div className={styles.themeToggle}>
               <button
@@ -1786,7 +2403,7 @@ export default function Home() {
             <>
               <div className={styles.boardPageSwitch}>
                 <div className={styles.boardPageTabs}>
-                  {boardPages.map((page) => (
+                  {currentBoardPages.map((page) => (
                     <button
                       key={page.key}
                       type="button"
@@ -1831,6 +2448,12 @@ export default function Home() {
               <section className={styles.boardFrame}>
                 <div className={styles.boardTop}>
                   <Image src="/rfppu-mark.png" alt="" width={44} height={44} className={styles.logoMark} priority />
+                  <div className={styles.brandTapTarget} onClick={handleBrandTap} role="button" tabIndex={0} onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleBrandTap();
+                    }
+                  }}>
                   <div className={styles.boardTitles}>
                     <div className={styles.titleStack}>
                       <strong>The Royal Free London</strong>
@@ -1857,6 +2480,7 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
+                  </div>
                   <div className={styles.themeToggle}>
                     <button
                       type="button"
@@ -1871,94 +2495,183 @@ export default function Home() {
 
                 <div className={styles.columnHeaderRow}>
                   <div className={styles.sideStub} />
-                  <div className={styles.columnHeaders}>
-                    {resources.map((resource) => (
-                      <span key={resource.id}>{resource.label}</span>
-                    ))}
+                  <div className={`${styles.columnHeaders} ${!staffView && activeBoardPage === "outpatient" ? styles.outpatientColumnHeaders : ""}`}>
+                    {!staffView && activeBoardPage === "outpatient" ? (
+                      <span className={styles.outpatientHeaderGroup}>Clinics 1-10</span>
+                    ) : (
+                      (staffView ? currentStaffBoardConfig.columns : theatreResources).map((resource) => (
+                        <span key={resource.id}>{resource.label}</span>
+                      ))
+                    )}
                   </div>
                 </div>
 
                 <div className={styles.weekBoard}>
-                  {boardDays.map((day) => (
-                    <section key={day.date} className={styles.dayBoard}>
-                      <div className={styles.dayMarker}>
-                        <span>{weekdayShort(day.date)}</span>
-                        <strong>{dateShort(day.date)}</strong>
-                        <em className={styles.daySessionTop}>AM</em>
-                        <em className={styles.daySessionBottom}>PM</em>
-                      </div>
-
-                      <div className={styles.dayContent}>
-                        {day.slots.map((slot) => (
-                          <div key={`${day.date}-${slot.session}`} className={styles.sessionLine}>
-                            <div className={styles.sessionCells}>
-                              {slot.resources.map(({ resource, bookings: cellBookings, staff }) => (
-                                <div key={`${day.date}-${slot.session}-${resource.id}`} className={styles.resourceLane}>
-                                  {staffView ? (
-                                    staff ? (
-                                      <article className={styles.staffCard}>
-                                        <strong>{staff.lead}</strong>
-                                        <p>{resource.label} staff</p>
-                                        <div className={styles.staffTeam}>
-                                          {staff.team.map((member) => (
-                                            <span key={`${staff.id}-${member.role}-${member.name}`}>
-                                              <b>{member.role}</b> {member.name}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      </article>
-                                    ) : (
-                                      <article className={styles.staffCard} data-empty="true">
-                                        <strong>No staff assigned</strong>
-                                        <p>{resource.shortLabel} {slot.session}</p>
-                                      </article>
-                                    )
-                                  ) : cellBookings.length > 0 ? (
-                                    cellBookings.map((booking) => (
-                                      <button
-                                        key={booking.id}
-                                        type="button"
-                                        className={styles.boardCell}
-                                        data-fill={getBookingFill(booking.status)}
-                                        onContextMenu={(event) => {
-                                          event.preventDefault();
-                                          openStatusMenu(booking.id, event.currentTarget);
-                                        }}
-                                        onTouchStart={(event) => startTileLongPress(booking.id, event.currentTarget)}
-                                        onTouchEnd={clearLongPressTimer}
-                                        onTouchCancel={clearLongPressTimer}
-                                        onClick={() => openDrawerForSlot(day.date, resource.id, slot.session, booking.id)}
-                                      >
-                                        <strong>{booking.consultant}</strong>
-                                        <p>{booking.specialty.name}</p>
-                                        <div className={styles.cellFooter}>
-                                          <div className={styles.cellCounts}>
-                                            {booking.nhsCount > 0 ? <span className={styles.nhsCount}><i className={styles.nhsDot} /> {booking.nhsCount}</span> : null}
-                                            {booking.ppCount > 0 ? <span className={styles.ppCount}><i className={styles.ppDot} /> {booking.ppCount}</span> : null}
-                                          </div>
-                                          <span className={styles.cellTime}>{booking.timeLabel}</span>
-                                        </div>
-                                      </button>
-                                    ))
-                                  ) : (
-                                      <button
-                                        type="button"
-                                        className={styles.boardCell}
-                                        data-fill="empty"
-                                        onClick={() => openDrawerForSlot(day.date, resource.id, slot.session)}
-                                      >
-                                        <span className={styles.emptyCellPlus}>+</span>
-                                        <span className={styles.emptyCellLabel}>{resource.shortLabel} {slot.session}</span>
-                                      </button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
+                  {staffView
+                    ? staffBoardDays.map((day) => (
+                        <section key={day.date} className={styles.dayBoard}>
+                          <div className={styles.dayMarker}>
+                            <span>{weekdayShort(day.date)}</span>
+                            <strong>{dateShort(day.date)}</strong>
+                            {currentStaffBoardConfig.splitBySession ? (
+                              <>
+                                <em className={styles.daySessionTop}>AM</em>
+                                <em className={styles.daySessionBottom}>PM</em>
+                              </>
+                            ) : null}
                           </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
+
+                          <div className={styles.dayContent}>
+                            {day.rows.map((row) => (
+                              <div key={`${day.date}-${row.session ?? "all"}`} className={styles.sessionLine}>
+                                <div className={styles.sessionCells}>
+                                  {row.columns.map(({ column, assignment }) => (
+                                    <div key={`${day.date}-${row.session ?? "all"}-${column.id}`} className={styles.resourceLane}>
+                                      {assignment ? (
+                                        <article className={styles.staffCard}>
+                                          <strong>{assignment.lead}</strong>
+                                          <p>{currentStaffBoardConfig.splitBySession ? `${column.label} staff` : column.label}</p>
+                                          <div className={styles.staffTeam}>
+                                            {assignment.team.map((member) => (
+                                              <span key={`${assignment.id}-${member.role}-${member.name}`}>
+                                                <b>{member.role}</b> {member.name}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </article>
+                                      ) : (
+                                        <article className={styles.staffCard} data-empty="true">
+                                          <strong>No staff assigned</strong>
+                                          <p>{currentStaffBoardConfig.splitBySession ? `${column.shortLabel} ${row.session}` : column.label}</p>
+                                        </article>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      ))
+                    : activeBoardPage === "outpatient"
+                      ? outpatientBoardDays.map((day) => (
+                          <section key={day.date} className={styles.dayBoard}>
+                            <div className={styles.dayMarker}>
+                              <span>{weekdayShort(day.date)}</span>
+                              <strong>{dateShort(day.date)}</strong>
+                            </div>
+
+                            <div className={styles.dayContent}>
+                              <div className={styles.sessionLine}>
+                                <div className={styles.sessionCells}>
+                                  {day.columns.map(({ column, bookings: cellBookings }) => (
+                                    <div key={`${day.date}-${column.id}`} className={styles.resourceLane}>
+                                      {cellBookings.length > 0 ? (
+                                        cellBookings.map((booking) => (
+                                          <button
+                                            key={booking.id}
+                                            type="button"
+                                            className={styles.boardCell}
+                                            data-fill={getBookingFill(booking.status)}
+                                            onContextMenu={(event) => {
+                                              event.preventDefault();
+                                              openStatusMenu(booking.id, event.currentTarget);
+                                            }}
+                                            onTouchStart={(event) => startTileLongPress(booking.id, event.currentTarget)}
+                                            onTouchEnd={clearLongPressTimer}
+                                            onTouchCancel={clearLongPressTimer}
+                                            onClick={() => openDrawerForSlot(day.date, column.id, booking.session, booking.id)}
+                                          >
+                                            <strong>{booking.consultant}</strong>
+                                            <p>{booking.specialty.name}</p>
+                                            <div className={styles.cellFooter}>
+                                              <div className={styles.cellCounts}>
+                                                {booking.nhsCount > 0 ? <span className={styles.nhsCount}><i className={styles.nhsDot} /> {booking.nhsCount}</span> : null}
+                                                {booking.ppCount > 0 ? <span className={styles.ppCount}><i className={styles.ppDot} /> {booking.ppCount}</span> : null}
+                                              </div>
+                                              <span className={styles.cellTime}>{booking.timeLabel}</span>
+                                            </div>
+                                          </button>
+                                        ))
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className={styles.boardCell}
+                                          data-fill="empty"
+                                          onClick={() => openDrawerForSlot(day.date, column.id, "AM")}
+                                        >
+                                          <span className={styles.emptyCellPlus}>+</span>
+                                          <span className={styles.emptyCellLabel}>{column.shortLabel}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </section>
+                        ))
+                      : boardDays.map((day) => (
+                        <section key={day.date} className={styles.dayBoard}>
+                          <div className={styles.dayMarker}>
+                            <span>{weekdayShort(day.date)}</span>
+                            <strong>{dateShort(day.date)}</strong>
+                            <em className={styles.daySessionTop}>AM</em>
+                            <em className={styles.daySessionBottom}>PM</em>
+                          </div>
+
+                          <div className={styles.dayContent}>
+                            {day.slots.map((slot) => (
+                              <div key={`${day.date}-${slot.session}`} className={styles.sessionLine}>
+                                <div className={styles.sessionCells}>
+                                  {slot.resources.map(({ resource, bookings: cellBookings }) => (
+                                    <div key={`${day.date}-${slot.session}-${resource.id}`} className={styles.resourceLane}>
+                                      {cellBookings.length > 0 ? (
+                                        cellBookings.map((booking) => (
+                                          <button
+                                            key={booking.id}
+                                            type="button"
+                                            className={styles.boardCell}
+                                            data-fill={getBookingFill(booking.status)}
+                                            onContextMenu={(event) => {
+                                              event.preventDefault();
+                                              openStatusMenu(booking.id, event.currentTarget);
+                                            }}
+                                            onTouchStart={(event) => startTileLongPress(booking.id, event.currentTarget)}
+                                            onTouchEnd={clearLongPressTimer}
+                                            onTouchCancel={clearLongPressTimer}
+                                            onClick={() => openDrawerForSlot(day.date, resource.id, slot.session, booking.id)}
+                                          >
+                                            <strong>{booking.consultant}</strong>
+                                            <p>{booking.specialty.name}</p>
+                                            <div className={styles.cellFooter}>
+                                              <div className={styles.cellCounts}>
+                                                {booking.nhsCount > 0 ? <span className={styles.nhsCount}><i className={styles.nhsDot} /> {booking.nhsCount}</span> : null}
+                                                {booking.ppCount > 0 ? <span className={styles.ppCount}><i className={styles.ppDot} /> {booking.ppCount}</span> : null}
+                                              </div>
+                                              <span className={styles.cellTime}>{booking.timeLabel}</span>
+                                            </div>
+                                          </button>
+                                        ))
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className={styles.boardCell}
+                                          data-fill="empty"
+                                          onClick={() => openDrawerForSlot(day.date, resource.id, slot.session)}
+                                        >
+                                          <span className={styles.emptyCellPlus}>+</span>
+                                          <span className={styles.emptyCellLabel}>{resource.shortLabel} {slot.session}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      ))}
                 </div>
               </section>
               ) : (
@@ -2340,6 +3053,37 @@ export default function Home() {
 
           {activeView === "specialties" ? (
             <section className={`${styles.viewStack} ${styles.compactView}`}>
+              {devMode ? (
+                <article className={styles.registryDevPanel}>
+                  <div className={styles.registryDevHeader}>
+                    <strong>Dev Mode</strong>
+                    <button type="button" className={styles.registryDevHide} onClick={() => setDevMode(false)}>
+                      Hide
+                    </button>
+                  </div>
+                  <form className={styles.registryDevForm} onSubmit={handleSpecialtySubmit}>
+                    <input
+                      value={specialtyForm.name}
+                      onChange={(event) => setSpecialtyForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Add specialty"
+                      required
+                    />
+                    <button type="submit" className={styles.registryDevAdd}>
+                      Add specialty
+                    </button>
+                  </form>
+                  <div className={styles.registryDevList}>
+                    {specialties.map((specialty) => (
+                      <div key={specialty.id} className={styles.registryDevItem}>
+                        <span>{specialty.name}</span>
+                        <button type="button" className={styles.registryDevRemove} onClick={() => void deleteSpecialty(specialty.id)}>
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ) : null}
               <div className={`${styles.catalogue} ${styles.compactCatalogue}`}>
                 {specialties.map((specialty) => {
                   const specialtyConsultants = consultants.filter((consultant) => consultant.specialtyId === specialty.id);
@@ -2604,60 +3348,98 @@ export default function Home() {
 
           {activeView === "procedures" ? (
             <section className={`${styles.viewStack} ${styles.compactView}`}>
-              <div className={styles.splitView}>
-                <form className={`${styles.form} ${styles.compactForm}`} onSubmit={handleProcedureSubmit}>
-                  <div className={styles.formHeader}>
-                    <strong>New procedure</strong>
-                  </div>
-                  <label>
-                    <span>Specialty</span>
-                    <select value={procedureForm.specialtyId} onChange={(event) => setProcedureForm((current) => ({ ...current, specialtyId: event.target.value }))}>
-                      {specialties.map((specialty) => (
-                        <option key={specialty.id} value={specialty.id}>{specialty.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Procedure name</span>
-                    <input value={procedureForm.name} onChange={(event) => setProcedureForm((current) => ({ ...current, name: event.target.value }))} placeholder="Trigger point injection" required />
-                  </label>
-                  <div className={styles.formGrid}>
-                    <label>
-                      <span>Difficulty</span>
-                      <select value={procedureForm.difficulty} onChange={(event) => setProcedureForm((current) => ({ ...current, difficulty: event.target.value as Procedure["difficulty"] }))}>
-                        <option>Low</option>
-                        <option>Medium</option>
-                        <option>High</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Estimated mins</span>
-                      <input value={procedureForm.estimatedMinutes} onChange={(event) => setProcedureForm((current) => ({ ...current, estimatedMinutes: event.target.value }))} inputMode="numeric" />
-                    </label>
-                    <label>
-                      <span>Arrival lead mins</span>
-                      <input value={procedureForm.arrivalLeadMinutes} onChange={(event) => setProcedureForm((current) => ({ ...current, arrivalLeadMinutes: event.target.value }))} inputMode="numeric" />
-                    </label>
-                  </div>
-                  <button type="submit" className={styles.primaryButton}>Save</button>
-                </form>
+              <div className={styles.notesPage}>
+                <div className={styles.notesSearchBar}>
+                  <input
+                    value={notesSearch}
+                    onChange={(event) => setNotesSearch(event.target.value)}
+                    placeholder='Search notes, consultant, specialty, date, or "Pain Management"'
+                  />
+                </div>
 
-                <div className={`${styles.catalogue} ${styles.compactCatalogue}`}>
-                  {procedures.map((procedure) => (
-                    <article key={procedure.id} className={`${styles.catalogueItem} ${styles.compactCatalogueItem}`}>
-                      <div className={styles.catalogueHeader}>
-                        <strong>{procedure.name}</strong>
-                        <span>{procedure.difficulty}</span>
+                <div className={styles.notesFeed}>
+                  {noteGroups.map((group) => (
+                    <section key={group.key} className={styles.notesGroup} data-group={group.key}>
+                      <div className={styles.notesGroupHeader}>
+                        <strong>{group.label}</strong>
+                        <span>{group.items.length} sessions</span>
                       </div>
-                      <div className={styles.compactMetaRow}>
-                        <span>{specialtyMap[procedure.specialtyId]?.name}</span>
+                      <div className={styles.notesGroupBody}>
+                        {group.items.map(({ booking, comments }) => {
+                    const expanded = expandedNoteIds.includes(booking.id);
+                    const specialty = specialtyMap[booking.specialtyId] ?? specialtyMap.endoscopy ?? specialties[0];
+                    const specialtyName = specialty.listLabel || specialty.name;
+                    const resourceLabel = resources.find((resource) => resource.id === booking.resourceId)?.label ?? booking.resourceId;
+
+                          return (
+                            <article key={booking.id} className={styles.noteCard} data-status={booking.status.toLowerCase()}>
+                        <button type="button" className={styles.noteRow} onClick={() => toggleNoteExpanded(booking.id)} aria-expanded={expanded}>
+                          <span className={styles.noteRowConsultant}>{booking.consultant}</span>
+                          <span className={styles.noteRowMeta}>
+                            {specialtyName} · {isoToLabel(booking.date)}
+                          </span>
+                        </button>
+
+                        {expanded ? (
+                          <div className={styles.noteExpanded}>
+                            <div className={styles.noteSessionMeta}>
+                              <span>{resourceLabel}</span>
+                              <span>{booking.session}</span>
+                              <span>{booking.timeLabel}</span>
+                            </div>
+
+                            <p className={styles.noteBody}>
+                              {booking.notes.trim() || "No booking notes recorded for this session yet."}
+                            </p>
+
+                            <div className={styles.noteSocialRow}>
+                              <button
+                                type="button"
+                                className={styles.noteLikeButton}
+                                data-active={noteLiked[booking.id] ? "true" : "false"}
+                                onClick={() => toggleNoteLike(booking.id)}
+                              >
+                                Like {noteLikes[booking.id] ?? 0}
+                              </button>
+                              <span className={styles.noteCommentCount}>{comments.length} comments</span>
+                            </div>
+
+                            <div className={styles.noteCommentComposer}>
+                              <input
+                                value={commentDrafts[booking.id] ?? ""}
+                                onChange={(event) => setCommentDrafts((current) => ({ ...current, [booking.id]: event.target.value }))}
+                                placeholder="Add a comment"
+                              />
+                              <button type="button" className={styles.secondaryButton} onClick={() => addNoteComment(booking.id)}>
+                                Comment
+                              </button>
+                            </div>
+
+                            <div className={styles.noteCommentsList}>
+                              {comments.map((comment) => (
+                                <div key={comment.id} className={styles.noteCommentItem}>
+                                  <div className={styles.noteCommentHeader}>
+                                    <strong>{comment.author}</strong>
+                                    <span>{new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(comment.createdAt))}</span>
+                                  </div>
+                                  <p>{comment.body}</p>
+                                  <button type="button" className={styles.noteCommentLike} onClick={() => toggleCommentLike(booking.id, comment.id)}>
+                                    Like {comment.likes}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                        })}
+                        {group.items.length === 0 ? <div className={styles.notesEmpty}>No session notes here.</div> : null}
                       </div>
-                      <div className={styles.ruleChips}>
-                        <span>{procedure.estimatedMinutes} mins</span>
-                        <span>Arrive -{procedure.arrivalLeadMinutes} mins</span>
-                      </div>
-                    </article>
+                    </section>
                   ))}
+
+                  {notesFeed.length === 0 ? <div className={styles.notesEmpty}>No matching session notes.</div> : null}
                 </div>
               </div>
             </section>
@@ -2681,24 +3463,45 @@ export default function Home() {
                       </div>
                     </div>
                     <div className={styles.rotaImportMeta}>
-                      <span>Source: {uploadedRotaFileName}</span>
-                      <span>Date: Monday 01 June 2026</span>
-                      <span>Unit: HW Day Surgery</span>
-                      <span>Fulfilment: Substantive, Bank, Agency</span>
+                      <span>Source: {rotaImportMeta.source}</span>
+                      <span>Date: {rotaImportMeta.startDate}{rotaImportMeta.endDate ? ` - ${rotaImportMeta.endDate}` : ""}</span>
+                      <span>Unit: {rotaImportMeta.unit}</span>
+                      <span>Uploaded: {rotaImportMeta.uploadedAt ? dateTimeLabel(rotaImportMeta.uploadedAt) : "Not archived yet"}</span>
                     </div>
+                    <button type="button" className={styles.rotaArchiveLink} onClick={() => setRotaArchiveOpen((current) => !current)}>
+                      {rotaArchiveOpen ? "Hide archive list" : "View archive list"}
+                    </button>
+                    {rotaArchiveOpen ? (
+                      <div className={styles.rotaArchiveList}>
+                        {rotaImportHistory.length > 0 ? (
+                          rotaImportHistory.map((item) => (
+                            <article key={item.id} className={styles.rotaArchiveItem}>
+                              <strong>{item.meta.source}</strong>
+                              <span>{item.meta.startDate}{item.meta.endDate ? ` - ${item.meta.endDate}` : ""}</span>
+                              <span>{item.meta.uploadedAt ? dateTimeLabel(item.meta.uploadedAt) : "Not archived yet"}</span>
+                              <button type="button" className={styles.rotaArchiveDelete} onClick={() => void deleteRotaImport(item.id)}>
+                                Remove
+                              </button>
+                            </article>
+                          ))
+                        ) : (
+                          <span className={styles.rotaArchiveEmpty}>No archived uploads yet.</span>
+                        )}
+                      </div>
+                    ) : null}
                   </article>
                   <div className={styles.rotaControls}>
                     <label className={styles.rotaUploadButton}>
                       <input
                         type="file"
                         accept=".xlsx,.xls"
-                        onChange={(event) => {
+                        onChange={async (event) => {
                           const file = event.target.files?.[0];
-                          if (file) setUploadedRotaFileName(file.name);
+                          if (file) await handleRotaUpload(file);
                         }}
                       />
                       <span className={styles.rotaUploadIcon} aria-hidden="true" />
-                      <span>Upload</span>
+                      <span>{rotaImportMeta.uploadedAt ? "Update" : "Upload"}</span>
                     </label>
                     <button
                       type="button"
@@ -2716,19 +3519,21 @@ export default function Home() {
                       <strong>{yearLabel(rotaMonthAnchor)}</strong>
                     </div>
                     <div className={styles.rotaDateTrack}>
-                      {rotaMonthDates.map((option) => {
-                        const hasRows = rotaDateOptions.includes(option);
-                        const isActive = activeDateFilter === option;
+                        {rotaMonthDates.map((option) => {
+                          const hasRows = rotaDateOptions.includes(option);
+                          const isActive = activeDateFilter === option;
+                          const isWeekend = ["S", "SU"].includes(weekdayShort(option));
 
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            className={styles.rotaDateCell}
-                            data-active={isActive}
-                            data-has-rows={hasRows}
-                            onClick={() => setActiveDateFilter((current) => (current === option ? "" : option))}
-                          >
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              className={styles.rotaDateCell}
+                              data-active={isActive}
+                              data-has-rows={hasRows}
+                              data-weekend={isWeekend}
+                              onClick={() => setActiveDateFilter((current) => (current === option ? "" : option))}
+                            >
                             <span>{weekdayShort(option)}</span>
                             <strong>{Number(dateShort(option))}</strong>
                           </button>
@@ -2862,6 +3667,12 @@ export default function Home() {
           ) : null}
         </section>
 
+        {activeView === "board" && !staffView && (activeBoardPage === "day-surgery" || activeBoardPage === "outpatient") ? (
+          <button type="button" className={styles.floatingBookButton} aria-label="Book a session" onClick={openQuickBooking}>
+            <span>+</span>
+          </button>
+        ) : null}
+
         <nav className={styles.bottomNav}>
           {navItems.map((item) => (
             <button key={item.key} type="button" className={styles.bottomNavButton} data-active={activeView === item.key} onClick={() => handleOutsideNavigation(() => setActiveView(item.key))}>
@@ -2937,6 +3748,16 @@ export default function Home() {
               ))}
             </select>
           </label>
+          {isOutpatientDraft ? (
+            <label>
+              <span>Type</span>
+              <select value={draft.appointmentType} onChange={(event) => setDraft((current) => ({ ...current, appointmentType: event.target.value as AppointmentType }))}>
+                {appointmentTypes.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label>
             <span>Consultant</span>
             <select required value={draft.consultant} onChange={(event) => setDraft((current) => ({ ...current, consultant: event.target.value, procedureIds: [] }))}>
@@ -2987,7 +3808,7 @@ export default function Home() {
               </button>
             </div>
           </label>
-          <div className={styles.drawerMetaBlock}>
+          {!isOutpatientDraft ? <div className={styles.drawerMetaBlock}>
             <div className={styles.drawerMetaRow}>
               <span>ETF</span>
               <strong>{draftTiming.finishMinutes === null ? "Set time" : minutesToClock(draftTiming.finishMinutes)}</strong>
@@ -3019,7 +3840,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          </div>
+          </div> : null}
           <div className={styles.drawerStepperGrid}>
             <label className={styles.drawerStepperField}>
               <span>NHS</span>
@@ -3067,7 +3888,7 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <div className={styles.drawerChecklistBlock}>
+          {!isOutpatientDraft ? <div className={styles.drawerChecklistBlock}>
             <span>Procedures</span>
             <div className={styles.drawerChecklistHeader} aria-hidden="true">
               <span />
@@ -3128,7 +3949,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> : null}
           <div className={styles.drawerLockedField}>
             <span>Status</span>
             <input className={styles.drawerReadonly} value={draft.status} readOnly />
